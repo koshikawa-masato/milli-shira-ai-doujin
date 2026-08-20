@@ -1,6 +1,5 @@
 #!/bin/bash
 # 使い方: upload.sh <png> [folder] [meta-json]
-# ~/krea2/.gallery_env に GALLERY_URL / GALLERY_TOKEN
 set -e
 source ~/krea2/.gallery_env
 FILE="${1:?png required}"; FOLDER="${2:-}"; META="${3:-{\}}"

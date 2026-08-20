@@ -1,6 +1,8 @@
 #!/bin/bash
 # 使い方: gen.sh "プロンプト" [seed] [LoRAパス] [出力dir]
-# Krea 2 Turbo で生成し、Pi5 のギャラリーへ自動アップロード。LoRA 無しなら第3引数を "" にする。
+#   環境変数 NOTE="..." を付けると「なぜこのプロンプトにしたか」を一緒に記録できる
+#   例: NOTE="耳を大きく" gen.sh "kuropanda, big panda ears, ..." 0 "" ~/krea2/output/test
+# Krea 2 Turbo で生成し、Pi5 ギャラリーへ自動アップロード。LoRA 無しなら第3引数を "" にする。
 set -e
 export PATH=$PATH:/usr/lib/wsl/lib
 PROMPT="${1:?prompt required}"
@@ -29,15 +31,26 @@ python src/musubi_tuner/krea2_generate_image.py \
   "${ARGS[@]}"
 NEW=$(ls -t "$OUT"/*.png 2>/dev/null | head -1)
 if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
-  META=$(python - "$PROMPT" "$SEED" "$LORA" "$DIT" $STEPS $GUIDANCE $MU <<'PY'
-import json,sys
-p,seed,lora,dit,steps,g,mu=sys.argv[1:]
-print(json.dumps({"prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":1.0 if lora else None,
-  "dit":dit,"steps":int(steps),"guidance_scale":float(g),"mu":float(mu)},ensure_ascii=False))
+  META=$(python3 - "$PROMPT" "$SEED" "$LORA" "$DIT" $STEPS $GUIDANCE $MU "${NOTE:-}" <<'PY'
+import json,sys,re,os
+p,seed,lora,dit,steps,g,mu,note=sys.argv[1:]
+run=step=None
+if lora:
+    m=re.match(r"^(.+?)-(\d{6})\.safetensors$", os.path.basename(lora))
+    if m: run,step=m.group(1),int(m.group(2))
+    else: run=os.path.basename(lora).replace(".safetensors","")
+print(json.dumps({"stage":"gen","prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":1.0 if lora else None,
+  "run":run,"step":step,"dit":os.path.basename(dit),"steps":int(steps),"guidance_scale":float(g),"mu":float(mu),
+  "width":1024,"height":1024,"note":note or None},ensure_ascii=False))
 PY
 )
   echo "$META" > "$NEW.json"
-  FOLDER=$(basename "$OUT")
+  FOLDER=${OUT#$HOME/krea2/output/}; [ "$FOLDER" = "$OUT" ] && FOLDER=$(basename "$OUT")
+  python3 - "$NEW" "$FOLDER" "$META" >> ~/krea2/output/history.jsonl <<'PY'
+import json,sys,time
+path,folder,meta=sys.argv[1:]
+print(json.dumps({"ts":time.strftime("%Y-%m-%dT%H:%M:%S"),"event":"gen","path":path,"folder":folder,"meta":json.loads(meta)},ensure_ascii=False))
+PY
   if [ -f ~/krea2/.gallery_env ]; then
     ~/krea2/scripts/upload.sh "$NEW" "$FOLDER" "$META" || echo "upload failed (image kept at $NEW)"
   fi

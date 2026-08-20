@@ -298,25 +298,50 @@ rsync -avP user@4070ti:~/krea2/output/ ./output/
 
 WSL2 の `~/krea2/scripts/` に同じものを置いてある。
 
-- `setup_krea2.sh`: §2〜§4 の環境構築と VAE / TE 取得を一括で行う
+- `setup_krea2.sh`: §2〜§4 の環境構築と VAE / TE 取得
 - `download_dit.sh`: HF ログイン後に Turbo / Raw を取得
-- `gen.sh "プロンプト" [seed] [LoRAパス] [出力dir]`: §8 の生成。LoRA 無しなら第3引数を `""`
-
-```bash
-~/krea2/scripts/gen.sh "kuropanda, 1girl, black panda hoodie" 0 ~/krea2/output/kuropanda_krea2-001200.safetensors
-```
+- `gen.sh` / `compare.sh` / `dataset_add.sh` / `train.sh` / `note.sh`: §11 参照（全工程をギャラリーに記録する）
+- `upload.sh` / `event.sh`: 上記から呼ばれる送信用
 
 ---
 
-## 11. 画像確認用ギャラリー（Pi5）
+## 11. 画像確認用ギャラリー（Pi5）＝ 制作過程の台帳
 
-生成画像は Pi5 のコンテナ `krea2-gallery` で見る。ソースは `tools/krea2-gallery/`。
+生成画像の確認と、**タネ画像 → 学習 → 生成 → プロンプト修正** の流れを全部記録する場所。ソースは `tools/krea2-gallery/`。
 
-- URL: http://100.69.125.56:8020/ （Tailscale 内）
-- `gen.sh` が生成直後に `/api/upload` へ POST する（WSL2 の `~/krea2/.gallery_env` に URL とトークン。雛形は `prompts/krea2-scripts/gallery_env.example`）
-- フォルダ = `gen.sh` の出力 dir 名。LoRA 付きは `step 1200` のようにバッジ表示
-- ★ でお気に入り、ゴミ箱は `data/trash/` へ移動するだけ
-- Pi5 → WSL2 / WSL2 → Pi5 の SSH は通っていないので rsync ではなく HTTP で送る
+- URL: http://100.69.125.56:8020/ （Tailscale 内）。`#hist` で履歴タブ
+- 「画像」タブ: フォルダ別グリッド、★お気に入り、ライトボックスに **系譜**（使った LoRA → 学習設定 → 素材画像 → 同 run の他チェックポイント）と **画像ごとのメモ**
+- 「履歴」タブ: 全イベントのタイムライン。生成は **直前のプロンプトとの差分**（追加=緑 / 削除=赤）を表示。種類で絞り込み、プロンプト / メモで検索
+- 履歴は `data/history.jsonl` に追記専用。ゴミ箱に入れても記録は消えない。WSL2 側にも `~/krea2/output/history.jsonl` が残る
+- Pi5 ⇄ WSL2 の SSH は通っていないので、WSL2 から HTTP（トークン付き）で送る。トークンは WSL2 の `~/krea2/.gallery_env`（雛形 `prompts/krea2-scripts/gallery_env.example`）
+
+### 記録されるイベントとスクリプト（WSL2 `~/krea2/scripts/`）
+
+| 工程 | コマンド | 記録される内容 |
+|---|---|---|
+| タネ画像を素材に追加 | `dataset_add.sh <画像> "<キャプション>" [出所] ["作り方プロンプト"] ["メモ"]` | 連番で `dataset/images/NNN.png` + `.txt` を作り、出所・作り方・メモ付きで `dataset` フォルダへ |
+| 学習 | `train.sh <run名> [steps] [save_every] [dim] [lr] [blocks_to_swap] ["メモ"]` | 開始時: 設定・素材一覧（キャプション込み）・実コマンド / 終了時: 成否・所要時間・チェックポイント一覧 |
+| チェックポイント比較 | `compare.sh <run名> "<プロンプト>" [seed] ["300 600 ..."] ["メモ"]` | 各 step + ベースを同 seed で生成し `compare/<run名>` へ |
+| 生成 | `NOTE="なぜ変えたか" gen.sh "<プロンプト>" [seed] [LoRA] [出力dir]` | プロンプト・seed・LoRA(run/step)・パラメータ・メモ |
+| メモ | `note.sh "本文" [対象画像パス]` | 気づき・判断理由。画像に紐づけ可（UI からも追加できる） |
+
+出所（source）の例: `nano-banana` / `claude` / `krea2-base` / `hand` / `photo`
+
+### 典型的な流れ
+
+```bash
+# 1. タネ画像（Claude 機や他ツールで作った画像を rsync で WSL2 へ）→ 素材登録
+~/krea2/scripts/dataset_add.sh ~/in/front.png "kuropanda, 1girl, black panda hoodie, front view" nano-banana "<作ったときのプロンプト>" "正面の基準"
+
+# 2. 学習（tmux で）
+tmux new -s krea2 '~/krea2/scripts/train.sh kuropanda_v1 1800 300 32 1e-4 16 "初回。素材24枚"'
+
+# 3. 比較 → ギャラリーの compare/kuropanda_v1 で step ごとに見比べ、★で採用候補に印
+~/krea2/scripts/compare.sh kuropanda_v1 "kuropanda, 1girl, black panda hoodie, standing, looking at viewer, simple background" 0
+
+# 4. プロンプトを詰める（差分とメモが履歴に残る）
+NOTE="耳を強調" ~/krea2/scripts/gen.sh "kuropanda, big round panda ears, ..." 0 ~/krea2/output/kuropanda_v1-001200.safetensors ~/krea2/output/kuropanda_v1
+```
 
 デプロイ・更新（Pi5）:
 

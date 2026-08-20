@@ -7,34 +7,69 @@
 <style>
   :root {
     --bg: #0f1115; --panel: #171a21; --line: #262b35; --fg: #e6e8ee; --muted: #8b93a5;
-    --accent: #f5b940; --danger: #e5534b;
+    --accent: #f5b940; --danger: #e5534b; --add: #3fb950; --del: #f85149;
+    --c-gen: #5b9cf6; --c-dataset: #3fb950; --c-train: #c77dff; --c-note: #f5b940; --c-trash: #8b93a5;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; }
   header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   header h1 { font-size: 16px; margin: 0 8px 0 0; font-weight: 600; }
+  .tabs { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .tabs button { border: 0; background: transparent; color: var(--fg); padding: 4px 14px; cursor: pointer; font-size: 13px; }
+  .tabs button.on { background: var(--line); }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chip { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: 13px; }
   .chip.on { background: var(--accent); color: #000; border-color: var(--accent); }
+  .chip.evf { border-color: var(--c); }
+  .chip.evf.on { background: var(--c); color: #000; }
   .spacer { flex: 1; }
   .muted { color: var(--muted); font-size: 12px; }
+  .search { background: var(--bg); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 5px 10px; font-size: 13px; min-width: 200px; }
   main { padding: 14px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; position: relative; }
   .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
-  .card .cap { padding: 8px 10px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
-  .card .cap b { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .cap { padding: 8px 10px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+  .card .cap b { color: var(--fg); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+  .card .cap .row { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; }
   .card .star { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.55); border: 0; color: #fff; font-size: 16px; border-radius: 6px; padding: 2px 7px; cursor: pointer; }
   .card .star.on { color: var(--accent); }
-  .card .lora { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; border-radius: 6px; padding: 2px 7px; }
+  .card .badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; border-radius: 6px; padding: 2px 7px; }
   .empty { color: var(--muted); text-align: center; padding: 60px 0; }
+  /* timeline */
+  .tl { max-width: 1100px; margin: 0 auto; }
+  .tl .day { color: var(--muted); font-size: 12px; margin: 18px 0 6px; padding-left: 6px; }
+  .ev { display: grid; grid-template-columns: 64px 84px 1fr; gap: 12px; padding: 10px 8px; border-left: 3px solid var(--c, var(--line)); margin-bottom: 6px; background: var(--panel); border-radius: 0 8px 8px 0; }
+  .ev.gone { opacity: .55; }
+  .ev .t { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .ev .kind { font-size: 11px; color: var(--c); font-weight: 600; letter-spacing: .02em; }
+  .ev .kind small { display: block; color: var(--muted); font-weight: 400; }
+  .ev .body { min-width: 0; }
+  .ev .thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #000; cursor: pointer; display: block; }
+  .ev .prompt { white-space: pre-wrap; word-break: break-word; }
+  .ev .prompt ins { background: rgba(63,185,80,.22); color: var(--add); text-decoration: none; border-radius: 3px; padding: 0 2px; }
+  .ev .prompt del { background: rgba(248,81,73,.18); color: var(--del); border-radius: 3px; padding: 0 2px; }
+  .ev .kv { color: var(--muted); font-size: 12px; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .ev .kv b { color: var(--fg); font-weight: 500; }
+  .ev .note { border-left: 2px solid var(--c-note); padding-left: 8px; white-space: pre-wrap; }
+  .ev pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 12px; overflow: auto; margin: 6px 0 0; max-height: 220px; }
+  .ev .ds { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .ev .ds img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+  .tag { display: inline-block; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; color: var(--muted); margin-left: 6px; }
+  .tag.trash { border-color: var(--danger); color: var(--danger); }
+  .sbtn { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 4px; padding: 1px 8px; font-size: 11px; cursor: pointer; }
+  .sbtn:hover { color: var(--fg); }
+  .notebox { display: flex; gap: 8px; margin: 0 auto 10px; max-width: 1100px; }
+  .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
   /* lightbox */
   #lb { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; z-index: 20; }
-  #lb.open { display: grid; grid-template-columns: 1fr 340px; }
+  #lb.open { display: grid; grid-template-columns: 1fr 380px; }
   #lb .view { display: flex; align-items: center; justify-content: center; padding: 16px; min-width: 0; }
   #lb .view img { max-width: 100%; max-height: calc(100vh - 32px); object-fit: contain; }
   #lb aside { background: var(--panel); border-left: 1px solid var(--line); padding: 16px; overflow: auto; font-size: 13px; }
   #lb aside h2 { font-size: 14px; margin: 0 0 10px; word-break: break-all; }
+  #lb aside h3 { font-size: 12px; color: var(--muted); margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
   #lb dl { margin: 0; }
   #lb dt { color: var(--muted); font-size: 11px; margin-top: 10px; }
   #lb dd { margin: 2px 0 0; word-break: break-word; white-space: pre-wrap; }
@@ -43,27 +78,43 @@
   #lb button.on { border-color: var(--accent); color: var(--accent); }
   #lb button.danger { border-color: var(--danger); color: var(--danger); }
   #lb .nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 28px; width: 44px; height: 80px; cursor: pointer; border-radius: 8px; }
-  #lb .prev { left: 10px; } #lb .next { right: 356px; }
-  #lb .close { position: absolute; top: 10px; right: 356px; background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; }
+  #lb .prev { left: 10px; } #lb .next { right: 396px; }
+  #lb .close { position: absolute; top: 10px; right: 396px; background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; }
+  #lb .sib { display: flex; gap: 6px; flex-wrap: wrap; }
+  #lb .sib a { display: block; text-align: center; font-size: 10px; color: var(--muted); cursor: pointer; }
+  #lb .sib img { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; display: block; }
+  #lb .sib a.cur img { outline: 2px solid var(--accent); }
+  #lb .lnote { border-left: 2px solid var(--c-note); padding-left: 8px; margin: 6px 0; white-space: pre-wrap; }
+  #lb .lnote small { color: var(--muted); display: block; }
+  #lb .notein { display: flex; gap: 6px; margin-top: 6px; }
+  #lb .notein input { flex: 1; background: var(--bg); border: 1px solid var(--line); color: var(--fg); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
   @media (max-width: 800px) {
     #lb.open { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-    #lb aside { border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; }
+    #lb aside { border-left: 0; border-top: 1px solid var(--line); max-height: 45vh; }
     #lb .next { right: 10px; } #lb .close { right: 10px; }
+    .ev { grid-template-columns: 56px 1fr; } .ev .kind { grid-column: 1 / -1; }
   }
 </style>
 </head>
 <body>
 <header>
   <h1>Krea2 Gallery</h1>
+  <div class="tabs"><button id="tabGrid" class="on">画像</button><button id="tabHist">履歴</button></div>
   <div class="chips" id="folders"></div>
+  <div class="chips" id="evFilters" style="display:none"></div>
   <button class="chip" id="starFilter">★ お気に入りのみ</button>
   <div class="spacer"></div>
+  <input class="search" id="search" type="search" placeholder="プロンプト / メモで検索">
   <span class="muted" id="count"></span>
   <span class="muted" id="updated"></span>
 </header>
 <main>
   <div class="grid" id="grid"></div>
-  <div class="empty" id="empty" style="display:none">画像がまだありません。WSL2 で <code>gen.sh</code> を実行すると自動で届きます。</div>
+  <div id="hist" style="display:none">
+    <div class="notebox"><input id="noteText" placeholder="メモを残す（例: 目の色を青→黒に変更。理由: 原作に合わせる）"><button id="noteAdd">メモ追加</button></div>
+    <div class="tl" id="tl"></div>
+  </div>
+  <div class="empty" id="empty" style="display:none">まだ何もありません。WSL2 で <code>gen.sh</code> / <code>dataset_add.sh</code> / <code>train.sh</code> を実行すると自動で記録されます。</div>
 </main>
 
 <div id="lb">
@@ -75,70 +126,128 @@
     <h2 id="lbName"></h2>
     <dl id="lbMeta"></dl>
     <div class="btns">
+      <button id="lbCopy">プロンプトをコピー</button>
       <button id="lbStar">★ お気に入り</button>
       <a class="btn" id="lbDl" download>原寸をダウンロード</a>
       <button class="danger" id="lbDel">ゴミ箱へ</button>
     </div>
+    <div id="lineage"></div>
+    <h3>この画像へのメモ</h3>
+    <div id="lbNotes"></div>
+    <div class="notein"><input id="lbNoteText" placeholder="気づき・次に試すこと"><button id="lbNoteAdd">追加</button></div>
     <p class="muted" style="margin-top:14px">← → で前後、Esc で閉じる、S でお気に入り</p>
   </aside>
 </div>
 
 <script>
-const state = { folder: null, star: false, items: [], folders: [], idx: -1, timer: null };
+const EV = {
+  gen:         { label: "生成",   color: "var(--c-gen)" },
+  dataset:     { label: "素材",   color: "var(--c-dataset)" },
+  train_start: { label: "学習開始", color: "var(--c-train)" },
+  train_end:   { label: "学習完了", color: "var(--c-train)" },
+  note:        { label: "メモ",   color: "var(--c-note)" },
+  trash:       { label: "ゴミ箱", color: "var(--c-trash)" },
+};
+const state = { view: "grid", folder: null, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
+                items: [], folders: [], hist: [], idx: -1 };
 const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function fmtTime(t) {
-  const d = new Date(t * 1000);
-  const p = (n) => String(n).padStart(2, "0");
+  const d = new Date(t * 1000); const p = (n) => String(n).padStart(2, "0");
   return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 function loraShort(m) {
-  if (!m || !m.lora) return "";
+  if (!m) return "";
+  if (m.run && m.step) return `${m.run} · step ${m.step}`;
+  if (!m.lora) return "";
   const b = String(m.lora).split("/").pop();
-  const mt = b.match(/-(\d{6})\.safetensors$/);
-  return mt ? `step ${parseInt(mt[1], 10)}` : b.replace(/\.safetensors$/, "");
+  const mt = b.match(/^(.+?)-(\d{6})\.safetensors$/);
+  return mt ? `${mt[1]} · step ${parseInt(mt[2], 10)}` : b.replace(/\.safetensors$/, "");
+}
+function matchQ(...texts) {
+  if (!state.q) return true;
+  const hay = texts.filter(Boolean).join(" ").toLowerCase();
+  return state.q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+async function copyText(t, btn) {
+  try { await navigator.clipboard.writeText(t); } catch (e) {
+    const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  if (btn) { const o = btn.textContent; btn.textContent = "コピー済"; setTimeout(() => btn.textContent = o, 1200); }
 }
 
+/* ---------- word diff (LCS) ---------- */
+function tokenize(s) { return String(s || "").split(/(\s*,\s*|\s+)/).filter(t => t.length); }
+function diffWords(a, b) {
+  const A = tokenize(a), B = tokenize(b);
+  const n = A.length, m = B.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    dp[i][j] = A[i] === B[j] ? dp[i+1][j+1] + 1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  let i = 0, j = 0, out = "";
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { out += esc(B[j]); i++; j++; }
+    else if (dp[i+1][j] >= dp[i][j+1]) { if (A[i].trim()) out += `<del>${esc(A[i])}</del>`; i++; }
+    else { out += B[j].trim() ? `<ins>${esc(B[j])}</ins>` : esc(B[j]); j++; }
+  }
+  while (i < n) { if (A[i].trim()) out += `<del>${esc(A[i])}</del>`; i++; }
+  while (j < m) { out += B[j].trim() ? `<ins>${esc(B[j])}</ins>` : esc(B[j]); j++; }
+  return out;
+}
+
+/* ---------- load ---------- */
 async function load() {
+  if (state.view === "hist") return loadHist();
   const q = new URLSearchParams();
   if (state.folder !== null) q.set("folder", state.folder);
   if (state.star) q.set("star", "true");
-  const r = await fetch("/api/images?" + q);
-  const j = await r.json();
-  state.items = j.items; state.folders = j.folders;
+  const r = await fetch("/api/images?" + q); const j = await r.json();
+  state.items = j.items.filter(i => matchQ(i.meta && i.meta.prompt, i.meta && i.meta.caption, i.name));
+  state.folders = j.folders;
   renderFolders(); renderGrid();
-  $("#count").textContent = `${j.total} 枚`;
+  $("#count").textContent = `${state.items.length} 枚`;
+  $("#updated").textContent = "更新 " + new Date().toLocaleTimeString("ja-JP");
+}
+async function loadHist() {
+  const r = await fetch("/api/history"); const j = await r.json();
+  state.folders = [...new Set(j.items.map(h => h.folder).filter(f => f !== undefined && f !== null))].sort();
+  state.hist = j.items.filter(h => state.evOn.has(h.event)
+    && (state.folder === null || h.folder === state.folder || h.event === "note" || h.event.startsWith("train"))
+    && matchQ(h.meta && h.meta.prompt, h.meta && h.meta.caption, h.text, h.run, h.note, h.meta && h.meta.note));
+  renderFolders(); renderEvFilters(); renderTimeline(j.items);
+  $("#count").textContent = `${state.hist.length} 件`;
   $("#updated").textContent = "更新 " + new Date().toLocaleTimeString("ja-JP");
 }
 
 function renderFolders() {
   const el = $("#folders"); el.innerHTML = "";
-  const all = document.createElement("button");
-  all.className = "chip" + (state.folder === null ? " on" : "");
-  all.textContent = "すべて";
-  all.onclick = () => { state.folder = null; load(); };
-  el.appendChild(all);
-  for (const f of state.folders) {
-    const b = document.createElement("button");
-    b.className = "chip" + (state.folder === f ? " on" : "");
-    b.textContent = f || "(root)";
-    b.onclick = () => { state.folder = f; load(); };
-    el.appendChild(b);
-  }
+  const mk = (label, val) => { const b = document.createElement("button"); b.className = "chip" + (state.folder === val ? " on" : ""); b.textContent = label; b.onclick = () => { state.folder = val; load(); }; el.appendChild(b); };
+  mk("すべて", null);
+  for (const f of state.folders) mk(f || "(root)", f);
   $("#starFilter").className = "chip" + (state.star ? " on" : "");
+}
+function renderEvFilters() {
+  const el = $("#evFilters"); el.innerHTML = "";
+  for (const [k, v] of Object.entries(EV)) {
+    const b = document.createElement("button"); b.className = "chip evf" + (state.evOn.has(k) ? " on" : ""); b.style.setProperty("--c", v.color); b.textContent = v.label;
+    b.onclick = () => { state.evOn.has(k) ? state.evOn.delete(k) : state.evOn.add(k); load(); }; el.appendChild(b);
+  }
 }
 
 function renderGrid() {
   const g = $("#grid"); g.innerHTML = "";
   $("#empty").style.display = state.items.length ? "none" : "block";
   state.items.forEach((it, i) => {
+    const m = it.meta || {};
     const c = document.createElement("div"); c.className = "card";
-    const ls = loraShort(it.meta);
+    const badge = m.stage === "dataset" || it.folder.startsWith("dataset") ? "素材" + (m.source ? " · " + m.source : "") : loraShort(m);
     c.innerHTML = `
       <img loading="lazy" src="/thumb/${encodeURI(it.path)}?v=${it.mtime}" alt="">
-      ${ls ? `<span class="lora">${ls}</span>` : ""}
+      ${badge ? `<span class="badge">${esc(badge)}</span>` : ""}
       <button class="star ${it.star ? "on" : ""}" title="お気に入り">★</button>
-      <div class="cap"><b title="${it.name}">${it.meta && it.meta.prompt ? it.meta.prompt : it.name}</b><span>${fmtTime(it.mtime)}</span></div>`;
+      <div class="cap"><b></b><div class="row"><span>${m.seed !== undefined && m.seed !== null ? "seed " + esc(m.seed) : esc(it.name)}</span><span>${fmtTime(it.mtime)}</span></div></div>`;
+    c.querySelector(".cap b").textContent = m.caption || m.prompt || it.name;
     c.querySelector("img").onclick = () => open(i);
     c.querySelector(".cap").onclick = () => open(i);
     c.querySelector(".star").onclick = (e) => { e.stopPropagation(); toggleStar(it); };
@@ -146,27 +255,98 @@ function renderGrid() {
   });
 }
 
-async function toggleStar(it) {
-  const r = await fetch("/api/star/" + encodeURI(it.path), { method: "POST" });
-  const j = await r.json();
-  it.star = j.star;
-  renderGrid();
-  if (state.idx >= 0) fillAside(state.items[state.idx]);
+/* ---------- timeline ---------- */
+function renderTimeline(all) {
+  const tl = $("#tl"); tl.innerHTML = "";
+  $("#empty").style.display = state.hist.length ? "none" : "block";
+  // 直前の生成プロンプト（同フォルダ）を時系列で引けるように、全件を古い順に見て prev を作る
+  const prevPrompt = new Map();
+  const lastByFolder = new Map();
+  for (const h of [...all].reverse()) {
+    if (h.event !== "gen") continue;
+    const p = (h.meta || {}).prompt || "";
+    const key = h.folder || "";
+    if (lastByFolder.has(key)) prevPrompt.set(h, lastByFolder.get(key));
+    if (p) lastByFolder.set(key, p);
+  }
+  let day = "";
+  for (const h of state.hist) {
+    const d = (h.ts || "").slice(0, 10);
+    if (d !== day) { day = d; const el = document.createElement("div"); el.className = "day"; el.textContent = d; tl.appendChild(el); }
+    const ev = EV[h.event] || { label: h.event, color: "var(--line)" };
+    const m = h.meta || {};
+    const row = document.createElement("div"); row.className = "ev" + (h.path && !h.exists ? " gone" : ""); row.style.setProperty("--c", ev.color);
+    let body = "";
+    if (h.event === "gen") {
+      const prev = prevPrompt.get(h);
+      const promptHtml = prev && prev !== m.prompt ? diffWords(prev, m.prompt) : esc(m.prompt || "");
+      body = `<div class="prompt">${promptHtml}</div>
+        <div class="kv">${m.seed !== undefined ? `<span>seed <b>${esc(m.seed)}</b></span>` : ""}
+          ${loraShort(m) ? `<span>LoRA <b>${esc(loraShort(m))}</b></span>` : `<span>LoRA <b>なし</b></span>`}
+          ${m.steps !== undefined ? `<span>steps/g/mu <b>${esc(m.steps)} / ${esc(m.guidance_scale)} / ${esc(m.mu)}</b></span>` : ""}
+          <span>${esc(h.folder || "(root)")}</span>
+          ${m.prompt ? `<button class="sbtn cp">プロンプトをコピー</button>` : ""}
+          ${h.trashed ? `<span class="tag trash">ゴミ箱</span>` : (h.exists === false ? `<span class="tag">ファイル無し</span>` : "")}${h.backfilled ? `<span class="tag">補完</span>` : ""}</div>
+        ${m.note ? `<div class="note" style="margin-top:6px">${esc(m.note)}</div>` : ""}`;
+    } else if (h.event === "dataset") {
+      body = `<div class="prompt"><b>${esc(m.caption || "")}</b></div>
+        <div class="kv">${m.source ? `<span>出所 <b>${esc(m.source)}</b></span>` : ""}<span>${esc(h.folder)}</span>${h.trashed ? `<span class="tag trash">ゴミ箱</span>` : ""}</div>
+        ${m.prompt ? `<div class="muted" style="margin-top:4px">作り方: ${esc(m.prompt)}</div>` : ""}
+        ${m.note ? `<div class="note" style="margin-top:6px">${esc(m.note)}</div>` : ""}`;
+    } else if (h.event === "train_start" || h.event === "train_end") {
+      const cfg = h.config || {};
+      const cks = h.checkpoints || [];
+      body = `<div><b>${esc(h.run || "")}</b> ${h.event === "train_end" ? `— ${esc(h.status || "done")}${h.duration_min ? ` (${esc(h.duration_min)} 分)` : ""}` : ""}</div>
+        <div class="kv">${Object.entries(cfg).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("")}</div>
+        ${h.dataset_folder ? `<div class="muted" style="margin-top:4px">素材: ${esc(h.dataset_folder)}（${(h.dataset || []).length} 枚）</div>` : ""}
+        ${(h.dataset || []).length ? `<div class="ds">${h.dataset.map(d => `<img loading="lazy" src="/thumb/${encodeURI((h.dataset_folder || "dataset") + "/" + d.file)}" title="${esc(d.caption || d.file)}" data-p="${esc((h.dataset_folder || "dataset") + "/" + d.file)}">`).join("")}</div>` : ""}
+        ${cks.length ? `<div class="muted" style="margin-top:4px">チェックポイント: ${cks.map(esc).join(", ")}</div>` : ""}
+        ${h.note ? `<div class="note" style="margin-top:6px">${esc(h.note)}</div>` : ""}
+        ${h.command ? `<details><summary class="muted" style="cursor:pointer">コマンド</summary><pre>${esc(h.command)}</pre></details>` : ""}`;
+    } else if (h.event === "note") {
+      body = `<div class="note">${esc(h.text)}</div>${h.ref ? `<div class="kv"><span>対象 <b>${esc(h.ref)}</b></span></div>` : ""}`;
+    } else if (h.event === "trash") {
+      body = `<div class="muted">${esc(h.path)} をゴミ箱へ</div>`;
+    } else {
+      body = `<pre>${esc(JSON.stringify(h, null, 1))}</pre>`;
+    }
+    row.innerHTML = `
+      <div>${h.path && h.exists ? `<img class="thumb" loading="lazy" src="/thumb/${encodeURI(h.path)}" data-p="${esc(h.path)}">` : ""}</div>
+      <div><div class="kind">${ev.label}<small>${esc((h.ts || "").slice(11, 16))}</small></div></div>
+      <div class="body">${body}</div>`;
+    row.querySelectorAll("img[data-p]").forEach(im => im.onclick = () => openPath(im.dataset.p));
+    const cp = row.querySelector(".cp"); if (cp) cp.onclick = () => copyText(m.prompt, cp);
+    tl.appendChild(row);
+  }
 }
 
+/* ---------- lightbox ---------- */
+async function toggleStar(it) {
+  const r = await fetch("/api/star/" + encodeURI(it.path), { method: "POST" }); const j = await r.json();
+  it.star = j.star; renderGrid();
+  if (state.idx >= 0) fillAside(state.items[state.idx]);
+}
+async function openPath(path) {
+  const r = await fetch("/api/images"); const j = await r.json();
+  state.items = j.items;
+  const i = state.items.findIndex(x => x.path === path);
+  if (i >= 0) open(i);
+}
 function open(i) {
-  state.idx = i;
-  const it = state.items[i];
+  state.idx = i; const it = state.items[i];
   $("#lbImg").src = "/img/" + encodeURI(it.path);
-  fillAside(it);
+  fillAside(it); loadLineage(it);
   $("#lb").classList.add("open");
 }
 function fillAside(it) {
   $("#lbName").textContent = (it.folder ? it.folder + "/" : "") + it.name;
   const m = it.meta || {};
   const rows = [
-    ["プロンプト", m.prompt],
-    ["LoRA", m.lora ? String(m.lora).split("/").pop() : ""],
+    ["キャプション（学習用）", m.caption],
+    ["プロンプト" + (m.stage === "dataset" ? "（素材の作り方）" : ""), m.prompt],
+    ["出所", m.source],
+    ["メモ", m.note],
+    ["LoRA", loraShort(m)],
     ["LoRA 倍率", m.lora_multiplier],
     ["seed", m.seed],
     ["steps / guidance / mu", [m.steps, m.guidance_scale, m.mu].filter(v => v !== undefined).join(" / ")],
@@ -179,42 +359,81 @@ function fillAside(it) {
   for (const [k, v] of rows) {
     if (v === undefined || v === null || v === "") continue;
     const dt = document.createElement("dt"); dt.textContent = k;
-    const dd = document.createElement("dd"); dd.textContent = v;
-    dl.append(dt, dd);
+    const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd);
   }
   $("#lbStar").className = it.star ? "on" : "";
-  $("#lbDl").href = "/img/" + encodeURI(it.path);
-  $("#lbDl").download = it.name;
+  $("#lbDl").href = "/img/" + encodeURI(it.path); $("#lbDl").download = it.name;
+}
+async function loadLineage(it) {
+  const box = $("#lineage"); box.innerHTML = ""; $("#lbNotes").innerHTML = "";
+  const r = await fetch("/api/lineage/" + encodeURI(it.path)); if (!r.ok) return;
+  const L = await r.json();
+  if (state.idx < 0 || state.items[state.idx].path !== it.path) return;
+  let html = "";
+  if (L.run) {
+    html += `<h3>系譜</h3><div>LoRA run <b>${esc(L.run)}</b>${L.step ? ` · step ${esc(L.step)}` : ""}</div>`;
+    const ts = L.train_events.find(e => e.event === "train_start"); const te = L.train_events.find(e => e.event === "train_end");
+    if (ts) html += `<div class="muted" style="margin-top:4px">学習 ${esc(ts.ts.replace("T", " "))}${te ? " → " + esc(te.ts.slice(11, 16)) : ""}<br>${Object.entries(ts.config || {}).map(([k, v]) => `${esc(k)}=${esc(v)}`).join(" · ")}</div>`;
+    else html += `<div class="muted" style="margin-top:4px">学習イベント未記録（train.sh を使うと記録されます）</div>`;
+    if (L.dataset.length) {
+      html += `<h3>素材 ${L.dataset.length} 枚（${esc(L.dataset_folder)}）</h3><div class="sib">${L.dataset.map(d => `<a data-p="${esc(d.path)}"><img src="/thumb/${encodeURI(d.path)}" title="${esc((d.meta || {}).caption || d.name)}"></a>`).join("")}</div>`;
+    }
+    if (L.siblings.length) {
+      const sibs = [{ path: L.path, step: L.step, seed: (L.meta || {}).seed, cur: true }, ...L.siblings].sort((a, b) => (a.step || 0) - (b.step || 0) || (a.seed || 0) - (b.seed || 0));
+      html += `<h3>同じ run の比較</h3><div class="sib">${sibs.map(s => `<a data-p="${esc(s.path)}" class="${s.cur ? "cur" : ""}"><img src="/thumb/${encodeURI(s.path)}">${s.step ? "step " + esc(s.step) : "base"}<br>seed ${esc(s.seed ?? "")}</a>`).join("")}</div>`;
+    }
+  } else if ((L.meta || {}).stage === "dataset" || it.folder.startsWith("dataset")) {
+    html += `<h3>系譜</h3><div class="muted">学習素材。${(L.meta || {}).source ? "出所: " + esc(L.meta.source) : ""}</div>`;
+  } else {
+    html += `<h3>系譜</h3><div class="muted">ベースモデルのみ（LoRA なし）</div>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll("a[data-p]").forEach(a => a.onclick = () => openPath(a.dataset.p));
+  $("#lbNotes").innerHTML = L.notes.length ? L.notes.map(n => `<div class="lnote">${esc(n.text)}<small>${esc(n.ts.replace("T", " "))}</small></div>`).join("") : `<div class="muted">なし</div>`;
 }
 function close() { $("#lb").classList.remove("open"); state.idx = -1; }
-function step(d) {
-  if (state.idx < 0) return;
-  const n = (state.idx + d + state.items.length) % state.items.length;
-  open(n);
-}
+function step(d) { if (state.idx < 0) return; open((state.idx + d + state.items.length) % state.items.length); }
 async function del() {
   if (state.idx < 0) return;
   const it = state.items[state.idx];
   const r = await fetch("/api/images/" + encodeURI(it.path), { method: "DELETE" });
   if (r.ok) { close(); load(); }
 }
+async function addNote(text, ref) {
+  text = (text || "").trim(); if (!text) return;
+  await fetch("/api/note", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, ref }) });
+}
+function setView(v) {
+  state.view = v;
+  $("#tabGrid").className = v === "grid" ? "on" : ""; $("#tabHist").className = v === "hist" ? "on" : "";
+  $("#grid").style.display = v === "grid" ? "" : "none"; $("#hist").style.display = v === "hist" ? "" : "none";
+  $("#starFilter").style.display = v === "grid" ? "" : "none"; $("#evFilters").style.display = v === "hist" ? "" : "none";
+  location.hash = v === "hist" ? "#hist" : "";
+  load();
+}
 
 $("#prev").onclick = () => step(-1);
 $("#next").onclick = () => step(1);
 $("#close").onclick = close;
 $("#lbStar").onclick = () => toggleStar(state.items[state.idx]);
+$("#lbCopy").onclick = () => { const m = state.items[state.idx].meta || {}; if (m.prompt) copyText(m.prompt, $("#lbCopy")); };
 $("#lbDel").onclick = del;
+$("#lbNoteAdd").onclick = async () => { const it = state.items[state.idx]; await addNote($("#lbNoteText").value, it.path); $("#lbNoteText").value = ""; loadLineage(it); };
+$("#lbNoteText").onkeydown = (e) => { if (e.key === "Enter") $("#lbNoteAdd").click(); e.stopPropagation(); };
+$("#noteAdd").onclick = async () => { await addNote($("#noteText").value, null); $("#noteText").value = ""; load(); };
+$("#noteText").onkeydown = (e) => { if (e.key === "Enter") $("#noteAdd").click(); };
 $("#starFilter").onclick = () => { state.star = !state.star; load(); };
+$("#tabGrid").onclick = () => setView("grid");
+$("#tabHist").onclick = () => setView("hist");
+let _qt; $("#search").oninput = (e) => { clearTimeout(_qt); _qt = setTimeout(() => { state.q = e.target.value; load(); }, 250); };
 $("#lb .view").onclick = (e) => { if (e.target === e.currentTarget) close(); };
 document.addEventListener("keydown", (e) => {
-  if (!$("#lb").classList.contains("open")) return;
-  if (e.key === "ArrowLeft") step(-1);
-  else if (e.key === "ArrowRight") step(1);
-  else if (e.key === "Escape") close();
-  else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
+  if (!$("#lb").classList.contains("open") || e.target.tagName === "INPUT") return;
+  if (e.key === "ArrowLeft") step(-1); else if (e.key === "ArrowRight") step(1);
+  else if (e.key === "Escape") close(); else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
 });
 
-load();
+setView(location.hash === "#hist" ? "hist" : "grid");
 setInterval(() => { if (state.idx < 0) load(); }, 20000);
 </script>
 </body>
