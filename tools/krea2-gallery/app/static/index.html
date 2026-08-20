@@ -71,7 +71,7 @@
   .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
   /* graph */
-  #graph { position: relative; overflow: auto; height: calc(100vh - 70px); }
+  #graph { position: relative; overflow: auto; height: calc(100dvh - 70px); }
   #gtools { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   #gtools button { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
   #gtools .legend { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-left: auto; }
@@ -164,10 +164,47 @@
     main { padding: 10px; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
     .form { grid-template-columns: 1fr; }
-    .ev { grid-template-columns: 48px 1fr; } .ev .kind { grid-column: 1 / -1; }
+    .ev { grid-template-columns: 48px 1fr; row-gap: 6px; }
+    .ev .kind { grid-column: 2; display: flex; gap: 8px; align-items: baseline; }
+    .ev .kind small { display: inline; }
+    .ev .body { grid-column: 1 / -1; }
     #gtools .legend, #gtools > span.muted { display: none; }
-    #graph { height: calc(100vh - 120px); -webkit-overflow-scrolling: touch; }
+    #graph { height: calc(100dvh - 120px); -webkit-overflow-scrolling: touch; }
+    .chips { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip { flex: 0 0 auto; }
+    /* タイムライン: 既定は 3 行に畳み、タップで展開 */
+    .ev .body { max-height: 4.6em; overflow: hidden; position: relative; }
+    .ev.open .body { max-height: none; }
+    .ev .body::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.6em; background: linear-gradient(transparent, var(--panel)); pointer-events: none; }
+    .ev.open .body::after { display: none; }
+    .ev .kind::after { content: " ▾"; color: var(--muted); }
+    .ev.open .kind::after { content: " ▴"; }
+    /* ライトボックス: 情報パネルを下部シートに */
+    #lb.open { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    #lb .view { padding: 8px; }
+    #lb .view img { max-height: calc(100dvh - 140px); }
+    #lb aside { border-left: 0; border-top: 1px solid var(--line); max-height: 62dvh; border-radius: 14px 14px 0 0; padding-top: 6px; transition: max-height .25s; }
+    #lb aside.collapsed { max-height: 64px; overflow: hidden; }
+    #lb .handle { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 8px; }
+    #lb .nav { display: none; } #lb .close { right: 10px; top: 10px; }
   }
+  @media (min-width: 701px) { #lb .handle { display: none; } }
+  /* bottom sheet (タッチ端末でのノード詳細) */
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: var(--panel); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .22s; max-height: 70dvh; overflow: auto; box-shadow: 0 -8px 30px rgba(0,0,0,.5); }
+  #sheet.open { transform: none; }
+  #sheet .handle { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 10px; }
+  #sheet .row { display: flex; gap: 12px; align-items: flex-start; }
+  #sheet img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; flex: 0 0 auto; }
+  #sheet .p { white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+  #sheet .kv { color: var(--muted); font-size: 12px; margin-top: 6px; display: flex; gap: 10px; flex-wrap: wrap; }
+  #sheet .acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  #sheet .acts button { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; }
+  #sheet .acts button.p { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  #sheetBg { position: fixed; inset: 0; z-index: 24; display: none; }
+  #sheetBg.open { display: block; }
+  #toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); background: #000; color: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; font-size: 13px; opacity: 0; transition: all .2s; z-index: 50; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translateX(-50%); }
   /* lightbox */
   #lb { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; z-index: 20; }
   #lb.open { display: grid; grid-template-columns: 1fr 380px; }
@@ -184,6 +221,7 @@
   #lb button.on { border-color: var(--accent); color: var(--accent); }
   #lb button.danger { border-color: var(--danger); color: var(--danger); }
   #lb .nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 28px; width: 44px; height: 80px; cursor: pointer; border-radius: 8px; }
+  #lb aside h2 { cursor: pointer; }
   #lb .prev { left: 10px; } #lb .next { right: 396px; }
   #lb .close { position: absolute; top: 10px; right: 396px; background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; }
   #lb .sib { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -301,7 +339,8 @@
   <button class="nav prev" id="prev">‹</button>
   <button class="nav next" id="next">›</button>
   <button class="close" id="close">×</button>
-  <aside>
+  <aside id="lbAside">
+    <span class="handle" id="lbHandle"></span>
     <h2 id="lbName"></h2>
     <dl id="lbMeta"></dl>
     <div class="btns">
@@ -321,6 +360,9 @@
   </aside>
 </div>
 
+<div id="sheetBg"></div>
+<div id="sheet"><span class="handle"></span><div id="sheetBody"></div></div>
+<div id="toast"></div>
 <div id="picker">
   <div class="box">
     <h3>派生元の画像を選ぶ</h3>
@@ -338,9 +380,12 @@ const EV = {
   note:        { label: "メモ",   color: "var(--c-note)" },
   trash:       { label: "ゴミ箱", color: "var(--c-trash)" },
 };
-const state = { view: "graph", folder: null, graph: null, gExp: new Map(JSON.parse(localStorage.getItem("gExp") || "[]")), gZoom: 1, gHighlight: null, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
+const state = { view: "graph", folder: null, graph: null, gExp: new Map(JSON.parse(localStorage.getItem("gExp") || "[]")), gZoom: matchMedia("(max-width: 700px)").matches ? 0.6 : 1, gHighlight: null, gScrolled: false, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
                 items: [], folders: [], hist: [], idx: -1 };
 const $ = (s) => document.querySelector(s);
+const TOUCH = matchMedia("(hover: none)").matches;
+const MOBILE = () => matchMedia("(max-width: 700px)").matches;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 1800); }
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function fmtTime(t) {
@@ -527,8 +572,9 @@ function renderTimeline(all) {
       <div>${h.path && h.exists ? `<img class="thumb" loading="lazy" src="/thumb/${encodeURI(h.path)}" data-p="${esc(h.path)}">` : ""}</div>
       <div><div class="kind">${ev.label}<small>${esc((h.ts || "").slice(11, 16))}</small></div></div>
       <div class="body">${body}</div>`;
-    row.querySelectorAll("img[data-p]").forEach(im => im.onclick = () => openPath(im.dataset.p));
-    const cp = row.querySelector(".cp"); if (cp) cp.onclick = () => copyText(m.prompt, cp);
+    row.querySelectorAll("img[data-p]").forEach(im => im.onclick = (e) => { e.stopPropagation(); openPath(im.dataset.p); });
+    const cp = row.querySelector(".cp"); if (cp) cp.onclick = (e) => { e.stopPropagation(); copyText(m.prompt, cp); };
+    row.onclick = (e) => { if (e.target.closest("button, a, details, summary")) return; row.classList.toggle("open"); };
     tl.appendChild(row);
   }
 }
@@ -544,6 +590,7 @@ async function loadGraph() {
   const r = await fetch("/api/graph"); state.graph = await r.json();
   state.folders = [...new Set(state.graph.nodes.filter(n => n.path).map(n => n.folder))].sort();
   renderFolders(); renderGraph();
+  if (!state.gScrolled) { state.gScrolled = true; setTimeout(() => $("#gFit").click(), 50); }
   const n = state.graph.nodes.filter(n => n.path).length;
   $("#count").textContent = `${n} 枚`;
   $("#updated").textContent = "更新 " + new Date().toLocaleTimeString("ja-JP");
@@ -662,13 +709,13 @@ function renderGraph() {
         el.innerHTML = `<img loading="lazy" src="/thumb/${encodeURI(n.path)}">${n.star ? `<span class="star">★</span>` : ""}
           <div class="l1">${n.type === "dataset" ? esc(m.caption || n.name) : esc(loraShort(m) || "base")}</div>
           <div class="l2">${n.type === "dataset" ? esc(m.source || "") : `seed ${esc(m.seed ?? "")} · ${fmtTime(n.ts)}`}</div>${state.gHighlight === n.id ? `<div class="cur"></div>` : ""}`;
-        el.onclick = () => openPath(n.path);
+        el.onclick = () => TOUCH ? openSheet(n) : openPath(n.path);
         el.onmouseenter = (ev) => tip(ev, (m.prompt || m.caption || n.name) + (m.note ? "\n\nメモ: " + m.note : "") + (n.inferred ? "\n\n(派生元はプロンプト類似で推定。ライトボックスで変更可)" : ""));
       } else if (n.type === "run") {
         const c = n.config || {};
         el.innerHTML = `<div class="l1">LoRA ${esc(n.run)}</div><div class="l2">${n.recorded ? `${esc(c.max_train_steps ?? "?")} steps · dim ${esc(c.network_dim ?? "?")} · lr ${esc(c.learning_rate ?? "?")}` : "学習記録なし"}</div><div class="l2">${n.status ? esc(n.status) + (n.duration_min ? ` · ${n.duration_min} 分` : "") : ""}</div>`;
         el.onmouseenter = (ev) => tip(ev, `run ${n.run}\n${Object.entries(c).map(([k, v]) => k + " = " + v).join("\n")}${n.checkpoints && n.checkpoints.length ? "\n\ncheckpoints:\n" + n.checkpoints.join("\n") : ""}${n.note ? "\n\nメモ: " + n.note : ""}`);
-        el.onclick = () => setView("hist");
+        el.onclick = () => TOUCH ? openSheet(n) : setView("hist");
       } else {
         el.innerHTML = `<div class="l1">${esc(n.label)}</div>`;
         if (n.type === "dsgroup") el.onclick = () => { state.folder = "dataset"; setView("grid"); };
@@ -678,7 +725,27 @@ function renderGraph() {
     nodesEl.appendChild(el);
   }
 }
-function tip(ev, text) { const t = $("#gtip"); t.textContent = text; t.style.display = "block"; moveTip(ev); }
+function tip(ev, text) { if (TOUCH) return; const t = $("#gtip"); t.textContent = text; t.style.display = "block"; moveTip(ev); }
+function openSheet(n) {
+  const m = n.meta || {};
+  const b = $("#sheetBody");
+  let html = `<div class="row">${n.path ? `<img src="/thumb/${encodeURI(n.path)}">` : ""}<div style="min-width:0"><div class="p">${esc(m.prompt || m.caption || n.label || n.run || n.name || "")}</div>
+    <div class="kv">${m.seed !== undefined && m.seed !== null ? `<span>seed <b>${esc(m.seed)}</b></span>` : ""}${loraShort(m) ? `<span>LoRA <b>${esc(loraShort(m))}</b></span>` : ""}${m.source ? `<span>出所 <b>${esc(m.source)}</b></span>` : ""}${n.ts ? `<span>${esc(fmtTime(tsOf(n)))}</span>` : ""}${n.inferred ? `<span>派生元は推定</span>` : ""}</div>
+    ${m.note ? `<div class="note" style="margin-top:6px;border-left:2px solid var(--c-note);padding-left:8px">${esc(m.note)}</div>` : ""}</div></div>`;
+  if (n.type === "run") { const c = n.config || {}; html += `<div class="kv">${Object.entries(c).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("")}</div>`; }
+  html += `<div class="acts">${n.path ? `<button class="p" id="shOpen">画像を開く</button><button id="shCopy">プロンプトをコピー</button><button id="shDerive">派生生成</button>` : ""}<button id="shClose">閉じる</button></div>`;
+  b.innerHTML = html;
+  if (n.path) {
+    $("#shOpen").onclick = () => { closeSheet(); openPath(n.path); };
+    $("#shCopy").onclick = () => { copyText(m.prompt || m.caption || ""); toast("コピーしました"); };
+    $("#shDerive").onclick = () => { closeSheet(); deriveFrom({ path: n.path, folder: n.folder, meta: m }); };
+  }
+  $("#shClose").onclick = closeSheet;
+  $("#sheet").classList.add("open"); $("#sheetBg").classList.add("open");
+}
+function closeSheet() { $("#sheet").classList.remove("open"); $("#sheetBg").classList.remove("open"); }
+$("#sheetBg").onclick = closeSheet;
+$("#sheet .handle").onclick = closeSheet;
 function moveTip(ev) { const t = $("#gtip"); const x = Math.min(ev.clientX + 14, window.innerWidth - 440), y = Math.min(ev.clientY + 14, window.innerHeight - t.offsetHeight - 10); t.style.left = x + "px"; t.style.top = y + "px"; }
 function hideTip() { $("#gtip").style.display = "none"; }
 function gExpandAll() {
@@ -689,6 +756,8 @@ function gExpandAll() {
   }
   localStorage.setItem("gExp", JSON.stringify([...state.gExp])); renderGraph();
 }
+document.addEventListener("touchstart", hideTip, { passive: true });
+document.addEventListener("scroll", hideTip, { passive: true, capture: true });
 $("#gExpand").onclick = gExpandAll;
 $("#gCollapse").onclick = () => { state.gExp = new Map(); localStorage.removeItem("gExp"); renderGraph(); };
 $("#gZoomIn").onclick = () => { state.gZoom = Math.min(2, state.gZoom + 0.1); renderGraph(); };
@@ -742,8 +811,8 @@ let opsTimer = null, curDetail = null;
 const fd = (f) => Object.fromEntries(new FormData(f).entries());
 async function postJob(type, params, note) {
   const r = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, params, note }) });
-  if (!r.ok) { alert("投入失敗: " + (await r.text())); return null; }
-  loadOps(); return (await r.json()).job;
+  if (!r.ok) { toast("投入失敗: " + (await r.text())); return null; }
+  toast("キューに入れました"); loadOps(); return (await r.json()).job;
 }
 async function loadOps() {
   if (state.view !== "ops") return;
@@ -824,11 +893,20 @@ document.querySelectorAll(".optabs button").forEach(b => b.onclick = () => {
 $("#fGen").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; d.count = +d.count || 1; const note = d.note; delete d.note; if (await postJob("gen", d, note)) e.target.querySelector("[name=note]").value = ""; };
 $("#fTrain").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); const note = d.note; delete d.note; for (const k of ["steps", "save_every", "dim", "swap", "compare_seed"]) d[k] = +d[k]; await postJob("train", d, note); };
 $("#fCompare").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; const note = d.note; delete d.note; await postJob("compare", d, note); };
-$("#fNote").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); await addNote(d.text, null); e.target.reset(); alert("メモを残しました"); };
+$("#fNote").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); await addNote(d.text, null); e.target.reset(); toast("メモを残しました"); };
 $("#tabOps").onclick = () => setView("ops");
+function deriveFrom(it) {
+  const m = it.meta || {};
+  setView("ops");
+  const f = $("#fGen"); f.prompt.value = m.prompt || ""; f.seed.value = m.seed ?? 0; f.parent.value = it.path; f.folder.value = it.folder || "test";
+  if (m.lora) { setTimeout(() => { f.lora.value = m.lora; }, 300); }
+  document.querySelector(".optabs button[data-f=gen]").click();
+  f.scrollIntoView({ behavior: "smooth", block: "start" });
+  toast("フォームに引き継ぎました");
+}
 $("#lbDerive").onclick = () => {
   const it = state.items[state.idx]; const m = it.meta || {};
-  close(); setView("ops");
+  close(); deriveFrom(it); return;
   const f = $("#fGen"); f.prompt.value = m.prompt || ""; f.seed.value = m.seed ?? 0; f.parent.value = it.path; f.folder.value = it.folder || "test";
   if (m.lora) { setTimeout(() => { f.lora.value = m.lora; }, 300); }
   document.querySelector(".optabs button[data-f=gen]").click();
@@ -852,6 +930,7 @@ function open(i) {
   $("#lbImg").src = "/img/" + encodeURI(it.path);
   fillAside(it); loadLineage(it); renderParentRow(it);
   state.gHighlight = "img:" + it.path;
+  if (MOBILE() && !$("#lb").classList.contains("open")) $("#lbAside").classList.add("collapsed");
   $("#lb").classList.add("open");
 }
 function fillAside(it) {
@@ -908,6 +987,14 @@ async function loadLineage(it) {
   $("#lbNotes").innerHTML = L.notes.length ? L.notes.map(n => `<div class="lnote">${esc(n.text)}<small>${esc(n.ts.replace("T", " "))}</small></div>`).join("") : `<div class="muted">なし</div>`;
 }
 function close() { $("#lb").classList.remove("open"); state.idx = -1; if (state.view === "graph") loadGraph(); }
+$("#lbHandle").onclick = () => $("#lbAside").classList.toggle("collapsed");
+$("#lbName").onclick = () => { if (MOBILE()) $("#lbAside").classList.toggle("collapsed"); };
+(() => { // スワイプで前後
+  let sx = 0, sy = 0, t0 = 0; const v = $("#lb .view");
+  v.addEventListener("touchstart", (e) => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now(); }, { passive: true });
+  v.addEventListener("touchend", (e) => { const t = e.changedTouches[0]; const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Date.now() - t0 < 600 && Math.abs(dx) > 50 && Math.abs(dy) < 60) step(dx < 0 ? 1 : -1); }, { passive: true });
+})();
 function step(d) { if (state.idx < 0) return; open((state.idx + d + state.items.length) % state.items.length); }
 async function del() {
   if (state.idx < 0) return;
@@ -946,6 +1033,7 @@ let _qt; $("#search").oninput = (e) => { clearTimeout(_qt); _qt = setTimeout(() 
 $("#lb .view").onclick = (e) => { if (e.target === e.currentTarget) close(); };
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("#picker").classList.contains("open")) { $("#picker").classList.remove("open"); return; }
+  if (e.key === "Escape" && $("#sheet").classList.contains("open")) { closeSheet(); return; }
   if (!$("#lb").classList.contains("open") || e.target.tagName === "INPUT") return;
   if (e.key === "ArrowLeft") step(-1); else if (e.key === "ArrowRight") step(1);
   else if (e.key === "Escape") close(); else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
