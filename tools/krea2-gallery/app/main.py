@@ -14,6 +14,15 @@
 - POST /api/event           任意イベント追記（Bearer）。JSON: {"event": "...", ...}
 - POST /api/note            UI からのメモ（トークン不要）。JSON: {"text": "...", "ref": "path(optional)"}
 - GET  /api/lineage/{path}  画像の系譜: 使った LoRA → 学習 run → 素材画像
+ジョブ（iPhone からの指示 → WSL2 ワーカーが実行）:
+- GET  /api/jobs            一覧（新しい順）。GET /api/jobs/{id}?tail=200 で詳細+ログ末尾
+- POST /api/jobs            投入 JSON: {"type": "gen|train|compare", "params": {...}, "note": "..."}
+- POST /api/jobs/{id}/cancel
+- GET  /api/jobs/next?worker=   ワーカー用（Bearer）: 次の queued を running にして返す
+- POST /api/jobs/{id}/log   ワーカー用（Bearer）: {"lines": [...], "progress": {...}}
+- POST /api/jobs/{id}/finish ワーカー用（Bearer）: {"status": "done|failed|cancelled", "result": {...}}
+- POST /api/worker/heartbeat ワーカー用（Bearer）: {"gpu": {...}, "loras": [...], "dataset_count": n, "running": id}
+- GET  /api/worker          ワーカー状態（最終 heartbeat・GPU・LoRA 一覧）
 - GET  /api/graph           系統図: 全画像の派生元（明示 > LoRA run > プロンプト類似で推定）と副次エッジ
 - POST /api/parent/{path}   派生元の明示指定 JSON: {"parent": "<path>" | null}
 """
@@ -560,6 +569,245 @@ def api_parent(path: str, body: dict = Body(...)):
         _write_meta(full, m)
         _append_history({"event": "reparent", "path": rel, "parent": parent, "old_parent": old})
     return {"ok": True, "path": rel, "parent": parent}
+
+
+# ---------- jobs / worker ----------
+
+JOBS = DATA / "jobs.json"
+JOBLOGS = DATA / "jobs"
+WORKER = DATA / "worker.json"
+JOBLOGS.mkdir(parents=True, exist_ok=True)
+JOB_TYPES = {"gen", "train", "compare"}
+
+
+def _load_jobs() -> list[dict]:
+    if JOBS.exists():
+        try:
+            return json.loads(JOBS.read_text())
+        except Exception:
+            return []
+    return []
+
+
+def _save_jobs(jobs: list[dict]) -> None:
+    tmp = JOBS.with_suffix(".tmp")
+    tmp.write_text(json.dumps(jobs, ensure_ascii=False, indent=1))
+    tmp.replace(JOBS)
+
+
+def _job_public(j: dict, tail: int = 0) -> dict:
+    out = dict(j)
+    if tail:
+        lf = JOBLOGS / f"{j['id']}.log"
+        if lf.exists():
+            lines = lf.read_text(encoding="utf-8", errors="replace").splitlines()
+            out["log"] = lines[-tail:]
+        else:
+            out["log"] = []
+    return out
+
+
+def _who(request_headers) -> str | None:
+    # Tailscale Serve 経由なら誰が操作したかが付く
+    return request_headers.get("tailscale-user-login") or request_headers.get("x-tailscale-user-login")
+
+
+from fastapi import Request
+
+
+@app.get("/api/jobs")
+def api_jobs(limit: int = 50):
+    jobs = _load_jobs()
+    return {"items": [_job_public(j) for j in reversed(jobs[-limit:])], "total": len(jobs)}
+
+
+@app.get("/api/jobs/next")
+def api_jobs_next(worker: str = "wsl2", authorization: str | None = Header(default=None)):
+    _check_token(authorization)
+    with _lock:
+        jobs = _load_jobs()
+        if any(j["status"] == "running" for j in jobs):
+            return {"job": None, "reason": "another job is running"}
+        for j in jobs:
+            if j["status"] == "queued":
+                j.update({"status": "running", "started_at": _now(), "worker": worker, "progress": {}})
+                _save_jobs(jobs)
+                return {"job": j}
+    return {"job": None}
+
+
+@app.get("/api/jobs/{job_id}")
+def api_job(job_id: str, tail: int = 200):
+    for j in _load_jobs():
+        if j["id"] == job_id:
+            return _job_public(j, tail)
+    raise HTTPException(404)
+
+
+@app.post("/api/jobs")
+def api_job_create(request: Request, body: dict = Body(...)):
+    t = body.get("type")
+    if t not in JOB_TYPES:
+        raise HTTPException(400, f"type must be one of {sorted(JOB_TYPES)}")
+    params = body.get("params") or {}
+    if t == "gen" and not (params.get("prompt") or "").strip():
+        raise HTTPException(400, "prompt required")
+    if t == "train" and not re.match(r"^[A-Za-z0-9_.-]+$", params.get("run") or ""):
+        raise HTTPException(400, "run name required ([A-Za-z0-9_.-])")
+    if t == "compare" and not (params.get("run") and (params.get("prompt") or "").strip()):
+        raise HTTPException(400, "run and prompt required")
+    with _lock:
+        jobs = _load_jobs()
+        jid = time.strftime("%Y%m%d-%H%M%S") + f"-{len(jobs) + 1:04d}"
+        job = {"id": jid, "type": t, "params": params, "note": body.get("note") or None, "status": "queued",
+               "created_at": _now(), "by": _who(request.headers), "progress": {}, "cancel": False}
+        jobs.append(job)
+        _save_jobs(jobs)
+        _append_history({"event": "job_queued", "job": jid, "type": t, "params": params, "note": job["note"], "by": job["by"]})
+    return {"ok": True, "job": job}
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def api_job_cancel(job_id: str):
+    with _lock:
+        jobs = _load_jobs()
+        for j in jobs:
+            if j["id"] == job_id:
+                if j["status"] == "queued":
+                    j.update({"status": "cancelled", "finished_at": _now()})
+                elif j["status"] == "running":
+                    j["cancel"] = True
+                else:
+                    raise HTTPException(400, "not cancellable")
+                _save_jobs(jobs)
+                return {"ok": True, "job": j}
+    raise HTTPException(404)
+
+
+@app.post("/api/jobs/{job_id}/log")
+def api_job_log(job_id: str, body: dict = Body(...), authorization: str | None = Header(default=None)):
+    _check_token(authorization)
+    lines = body.get("lines") or []
+    if lines:
+        with (JOBLOGS / f"{job_id}.log").open("a", encoding="utf-8") as f:
+            for ln in lines:
+                f.write(str(ln).rstrip("\n") + "\n")
+    with _lock:
+        jobs = _load_jobs()
+        for j in jobs:
+            if j["id"] == job_id:
+                if body.get("progress"):
+                    j["progress"] = {**(j.get("progress") or {}), **body["progress"], "updated_at": _now()}
+                    # loss の履歴（最大 600 点）
+                    if "loss" in body["progress"] and body["progress"].get("step") is not None:
+                        hist = j.setdefault("loss_history", [])
+                        if not hist or hist[-1][0] != body["progress"]["step"]:
+                            hist.append([body["progress"]["step"], body["progress"]["loss"]])
+                            if len(hist) > 600:
+                                j["loss_history"] = hist[::2]
+                _save_jobs(jobs)
+                return {"ok": True, "cancel": bool(j.get("cancel"))}
+    raise HTTPException(404)
+
+
+@app.post("/api/jobs/{job_id}/finish")
+def api_job_finish(job_id: str, body: dict = Body(...), authorization: str | None = Header(default=None)):
+    _check_token(authorization)
+    status = body.get("status") or "done"
+    with _lock:
+        jobs = _load_jobs()
+        for j in jobs:
+            if j["id"] == job_id:
+                j.update({"status": status, "finished_at": _now(), "result": body.get("result") or {}})
+                _save_jobs(jobs)
+                _append_history({"event": "job_" + status, "job": job_id, "type": j["type"], "result": j["result"]})
+                return {"ok": True}
+    raise HTTPException(404)
+
+
+@app.post("/api/worker/heartbeat")
+def api_worker_heartbeat(body: dict = Body(...), authorization: str | None = Header(default=None)):
+    _check_token(authorization)
+    body["ts"] = _now()
+    WORKER.write_text(json.dumps(body, ensure_ascii=False))
+    return {"ok": True}
+
+
+@app.get("/api/worker")
+def api_worker():
+    if not WORKER.exists():
+        return {"online": False}
+    try:
+        w = json.loads(WORKER.read_text())
+    except Exception:
+        return {"online": False}
+    age = time.time() - time.mktime(time.strptime(w.get("ts", "1970-01-01T00:00:00"), "%Y-%m-%dT%H:%M:%S"))
+    w["age_sec"] = int(age)
+    w["online"] = age < 90
+    return w
+
+
+@app.get("/api/health")
+def api_health():
+    return {"ok": True}
+
+
+@app.get("/api/me")
+def api_me(request: Request):
+    return {"user": _who(request.headers)}
+
+
+# ---------- PWA ----------
+
+from fastapi.responses import Response
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return JSONResponse(
+        {"name": "Krea2 Gallery", "short_name": "Krea2", "start_url": "/", "display": "standalone",
+         "background_color": "#0f1115", "theme_color": "#171a21",
+         "icons": [{"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+                   {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png"}]},
+        media_type="application/manifest+json",
+    )
+
+
+_icon_cache: dict[int, bytes] = {}
+
+
+def _icon(size: int) -> bytes:
+    if size not in _icon_cache:
+        from PIL import ImageDraw
+        im = Image.new("RGB", (size, size), "#171a21")
+        d = ImageDraw.Draw(im)
+        m = size // 8
+        d.rounded_rectangle([m, m, size - m, size - m], radius=size // 6, fill="#f5b940")
+        # パンダ風の丸耳 + 顔
+        r = size // 7
+        d.ellipse([size * 0.28 - r, size * 0.32 - r, size * 0.28 + r, size * 0.32 + r], fill="#0f1115")
+        d.ellipse([size * 0.72 - r, size * 0.32 - r, size * 0.72 + r, size * 0.32 + r], fill="#0f1115")
+        d.ellipse([size * 0.22, size * 0.30, size * 0.78, size * 0.80], fill="#ffffff")
+        e = size // 12
+        d.ellipse([size * 0.38 - e, size * 0.52 - e, size * 0.38 + e, size * 0.52 + e], fill="#0f1115")
+        d.ellipse([size * 0.62 - e, size * 0.52 - e, size * 0.62 + e, size * 0.52 + e], fill="#0f1115")
+        import io
+        buf = io.BytesIO()
+        im.save(buf, "PNG")
+        _icon_cache[size] = buf.getvalue()
+    return _icon_cache[size]
+
+
+@app.get("/icons/icon-{size}.png")
+def icon(size: int):
+    if size not in (180, 192, 512):
+        raise HTTPException(404)
+    return Response(_icon(size), media_type="image/png")
+
+
+@app.get("/apple-touch-icon.png")
+def apple_icon():
+    return Response(_icon(180), media_type="image/png")
 
 
 @app.get("/healthz")

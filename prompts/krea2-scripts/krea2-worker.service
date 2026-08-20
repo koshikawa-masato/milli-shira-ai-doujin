@@ -1,0 +1,17 @@
+# WSL2 常駐ワーカー（systemd user unit）
+# 置き場所: ~/.config/systemd/user/krea2-worker.service
+#   systemctl --user daemon-reload && systemctl --user enable --now krea2-worker
+#   ログアウト後も動かす: sudo loginctl enable-linger $USER
+[Unit]
+Description=Krea2 gallery job worker (pull jobs from Pi5 over Tailscale)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/krea2/scripts/worker.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

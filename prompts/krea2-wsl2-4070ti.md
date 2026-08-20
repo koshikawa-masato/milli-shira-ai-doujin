@@ -302,6 +302,7 @@ WSL2 の `~/krea2/scripts/` に同じものを置いてある。
 - `download_dit.sh`: HF ログイン後に Turbo / Raw を取得
 - `gen.sh` / `compare.sh` / `dataset_add.sh` / `train.sh` / `note.sh`: §11 参照（全工程をギャラリーに記録する）
 - `upload.sh` / `event.sh`: 上記から呼ばれる送信用
+- `worker.py` + `krea2-worker.service`: ギャラリーのジョブを実行する常駐ワーカー（§11）
 
 ---
 
@@ -309,7 +310,13 @@ WSL2 の `~/krea2/scripts/` に同じものを置いてある。
 
 生成画像の確認と、**タネ画像 → 学習 → 生成 → プロンプト修正** の流れを全部記録する場所。ソースは `tools/krea2-gallery/`。
 
-- URL: http://100.69.125.56:8020/ （Tailscale 内）。既定は「系統図」、`#grid` で画像、`#hist` で履歴
+- URL: **https://pi5-home-1.tail8ec65a.ts.net:8452/** （Tailscale Serve。認証は Tailscale ログインで、tailnet 内の端末だけが開ける。MineNISA と同じ方式）
+  - iPhone: Safari で開いて「共有 → ホーム画面に追加」すると PWA としてフルスクリーンで使える
+  - コンテナは `127.0.0.1:8020` にしか出していない。公開/停止は Pi5 で `~/krea2-gallery/deploy.sh up|down|status`
+  - 既定は「系統図」、`#grid` 画像、`#hist` 履歴、`#ops` 操作
+- 「操作」タブ（iPhone から学習・生成を指示）: WSL2 ワーカーの状態（GPU 使用率 / VRAM / 温度 / 素材数 / LoRA 一覧）、実行中ジョブの進捗バー・loss 曲線・ログ末尾・中止、生成 / 学習 / 比較 / メモ の投入フォーム、ジョブ履歴（再投入可）。ライトボックスの「この画像から派生生成」でプロンプト・seed・派生元を引き継いでフォームへ
+  - 仕組み: Pi5 にジョブキュー（`data/jobs.json`）、WSL2 の常駐ワーカー `worker.py` が Tailscale 経由で取りに行き `gen.sh` / `train.sh` / `compare.sh` を実行、進捗（step / loss / ETA）とログを返す。Pi5 → WSL2 の SSH は不要
+  - ワーカー: `~/.config/systemd/user/krea2-worker.service`（`systemctl --user status krea2-worker`、`journalctl --user -u krea2-worker -f`）。linger 有効化済みなのでログアウト後も動く。WSL 自体が止まると止まるので、Windows 側で WSL を起動しておくこと
 - 「系統図」タブ: **どの画像から派生したか**を左→右のツリーで表示（Mermaid 風）。根は「Krea 2 Turbo」と「素材」、LoRA 生成は学習 run ノードの下にぶら下がる
   - 派生元の決め方: ① `PARENT=` で明示指定 / ライトボックスの「派生元 → 変更」 ＞ ② LoRA 使用なら run ＞ ③ 過去 40 件からプロンプト類似（LCS ≥ 0.4）で推定（点線）
   - 矢印の緑字 = 追加された語、赤字 = 削除語数。LoRA / 素材化 の関係は色付き点線
@@ -350,8 +357,14 @@ NOTE="耳を強調" ~/krea2/scripts/gen.sh "kuropanda, big round panda ears, ...
 デプロイ・更新（Pi5）:
 
 ```bash
-rsync -a --exclude .env tools/krea2-gallery/ pi5:~/krea2-gallery/
-ssh pi5 'cd ~/krea2-gallery && docker compose up -d --build'
+rsync -a --exclude .env --exclude data tools/krea2-gallery/ pi5:~/krea2-gallery/
+ssh pi5 '~/krea2-gallery/deploy.sh rebuild'     # 初回は up（Tailscale Serve 公開も行う）
+```
+
+ワーカー更新（WSL2）:
+
+```bash
+scp prompts/krea2-scripts/worker.py wsl2:~/krea2/scripts/ && ssh wsl2 'systemctl --user restart krea2-worker'
 ```
 
 ---

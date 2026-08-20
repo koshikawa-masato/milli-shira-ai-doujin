@@ -2,7 +2,14 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171a21">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Krea2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <title>Krea2 Gallery</title>
 <style>
   :root {
@@ -114,6 +121,52 @@
   #lb .parent { display: flex; align-items: center; gap: 8px; }
   #lb .parent img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; cursor: pointer; }
   #lb .parent small { color: var(--muted); display: block; }
+  /* ops (操作) */
+  #ops { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
+  .op { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .op h2 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .op h2 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .op h2 .dot.on { background: var(--add); box-shadow: 0 0 6px var(--add); }
+  .op .kv { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .op .kv b { color: var(--fg); font-weight: 500; }
+  .bar { height: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin: 8px 0 4px; }
+  .bar i { display: block; height: 100%; background: var(--c-gen); width: 0; transition: width .4s; }
+  .bar.train i { background: var(--c-train); }
+  .log { background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 11px/1.4 ui-monospace, Menlo, monospace; color: #b8c0cc; max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .loss { width: 100%; height: 70px; display: block; }
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .form label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); }
+  .form label.wide { grid-column: 1 / -1; }
+  .form input, .form select, .form textarea { background: var(--bg); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 9px 10px; font-size: 16px; font-family: inherit; }
+  .form textarea { min-height: 72px; resize: vertical; }
+  .form .act { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .btn-p { border: 0; background: var(--accent); color: #000; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-p:disabled { opacity: .5; }
+  .btn-s { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+  .btn-s.danger { border-color: var(--danger); color: var(--danger); }
+  .optabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .optabs button { flex: 1; border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 8px; padding: 8px 0; cursor: pointer; font-size: 13px; }
+  .optabs button.on { background: var(--line); }
+  .jobs { display: flex; flex-direction: column; gap: 6px; }
+  .job { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; cursor: pointer; }
+  .job .st { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; text-align: center; background: var(--line); color: var(--fg); }
+  .job .st.running { background: var(--c-gen); color: #000; } .job .st.done { background: var(--add); color: #000; } .job .st.failed { background: var(--danger); color: #fff; } .job .st.queued { background: var(--c-note); color: #000; }
+  .job .t { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job .t small { color: var(--muted); display: block; }
+  .hint { font-size: 11px; color: var(--muted); }
+  @media (max-width: 700px) {
+    header { padding: 8px 10px; gap: 8px; }
+    header h1 { display: none; }
+    .tabs button { padding: 6px 10px; }
+    .search { min-width: 0; width: 100%; order: 9; }
+    #count, #updated { font-size: 11px; }
+    main { padding: 10px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .form { grid-template-columns: 1fr; }
+    .ev { grid-template-columns: 48px 1fr; } .ev .kind { grid-column: 1 / -1; }
+    #gtools .legend, #gtools > span.muted { display: none; }
+    #graph { height: calc(100vh - 120px); -webkit-overflow-scrolling: touch; }
+  }
   /* lightbox */
   #lb { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; z-index: 20; }
   #lb.open { display: grid; grid-template-columns: 1fr 380px; }
@@ -151,7 +204,7 @@
 <body>
 <header>
   <h1>Krea2 Gallery</h1>
-  <div class="tabs"><button id="tabGraph">系統図</button><button id="tabGrid">画像</button><button id="tabHist">履歴</button></div>
+  <div class="tabs"><button id="tabGraph">系統図</button><button id="tabGrid">画像</button><button id="tabHist">履歴</button><button id="tabOps">操作</button></div>
   <div class="chips" id="folders"></div>
   <div class="chips" id="evFilters" style="display:none"></div>
   <button class="chip" id="starFilter">★ お気に入りのみ</button>
@@ -172,6 +225,68 @@
     <div id="gcanvas"><svg id="gsvg"></svg><div id="gnodes"></div></div>
   </div>
   <div class="gtip" id="gtip"></div>
+  <div id="ops" style="display:none">
+    <div class="op">
+      <h2><span class="dot" id="wDot"></span>WSL2 ワーカー <span class="hint" id="wAge"></span></h2>
+      <div class="kv" id="wInfo">読み込み中…</div>
+    </div>
+    <div class="op" id="curJobBox" style="display:none">
+      <h2>実行中 <span class="hint" id="cjTitle"></span></h2>
+      <div class="kv" id="cjInfo"></div>
+      <div class="bar" id="cjBar"><i></i></div>
+      <div class="hint" id="cjEta"></div>
+      <svg class="loss" id="cjLoss" viewBox="0 0 600 70" preserveAspectRatio="none" style="display:none"></svg>
+      <div class="log" id="cjLog"></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn-s danger" id="cjCancel">中止</button></div>
+    </div>
+    <div class="op">
+      <div class="optabs"><button class="on" data-f="gen">生成</button><button data-f="train">学習</button><button data-f="compare">比較</button><button data-f="note">メモ</button></div>
+      <form class="form" id="fGen">
+        <label class="wide">プロンプト<textarea name="prompt" required placeholder="kuropanda, 1girl, black panda hoodie, ..."></textarea></label>
+        <label>seed<input name="seed" type="number" value="0" inputmode="numeric"></label>
+        <label>LoRA<select name="lora"><option value="">なし（ベース）</option></select></label>
+        <label>出力フォルダ<input name="folder" value="test" placeholder="test"></label>
+        <label>枚数（seed を +1 ずつ）<input name="count" type="number" value="1" min="1" max="8" inputmode="numeric"></label>
+        <label class="wide">派生元（任意・ギャラリー上のパス）<input name="parent" placeholder="test/2026....png"></label>
+        <label class="wide">メモ（なぜこのプロンプトか）<input name="note" placeholder="耳を大きくしたい"></label>
+        <div class="act"><button class="btn-p" type="submit">生成をキューに入れる</button><span class="hint">1 枚 約 1 分（モデル読込込み）</span></div>
+      </form>
+      <form class="form" id="fTrain" style="display:none">
+        <label>run 名<input name="run" required pattern="[A-Za-z0-9_.-]+" placeholder="kuropanda_v1"></label>
+        <label>max steps<input name="steps" type="number" value="1800" inputmode="numeric"></label>
+        <label>save every<input name="save_every" type="number" value="300" inputmode="numeric"></label>
+        <label>dim / alpha<input name="dim" type="number" value="32" inputmode="numeric"></label>
+        <label>learning rate<input name="lr" value="1e-4"></label>
+        <label>blocks_to_swap<input name="swap" type="number" value="16" inputmode="numeric"></label>
+        <label class="wide">学習後に自動比較するプロンプト（任意）<input name="compare_prompt" placeholder="kuropanda, 1girl, black panda hoodie, standing, looking at viewer, simple background"></label>
+        <label>比較 seed<input name="compare_seed" type="number" value="0" inputmode="numeric"></label>
+        <label class="wide">メモ<input name="note" placeholder="初回。素材24枚"></label>
+        <div class="act"><button class="btn-p" type="submit">学習をキューに入れる</button><span class="hint" id="dsHint"></span></div>
+      </form>
+      <form class="form" id="fCompare" style="display:none">
+        <label>run 名<select name="run" required></select></label>
+        <label>seed<input name="seed" type="number" value="0" inputmode="numeric"></label>
+        <label class="wide">プロンプト<textarea name="prompt" required></textarea></label>
+        <label class="wide">steps（空なら全チェックポイント）<input name="steps" placeholder="600 900 1200"></label>
+        <label class="wide">メモ<input name="note"></label>
+        <div class="act"><button class="btn-p" type="submit">比較をキューに入れる</button></div>
+      </form>
+      <form class="form" id="fNote" style="display:none">
+        <label class="wide">メモ<textarea name="text" required placeholder="気づき・判断理由"></textarea></label>
+        <div class="act"><button class="btn-p" type="submit">メモを残す</button></div>
+      </form>
+    </div>
+    <div class="op">
+      <h2>ジョブ <span class="hint" id="jobCount"></span></h2>
+      <div class="jobs" id="jobList"></div>
+    </div>
+    <div class="op" id="jobDetail" style="display:none">
+      <h2 id="jdTitle"></h2>
+      <div class="kv" id="jdInfo"></div>
+      <div class="log" id="jdLog" style="margin-top:8px"></div>
+      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn-s" id="jdClose">閉じる</button><button class="btn-s" id="jdRetry">同じ内容で再投入</button></div>
+    </div>
+  </div>
   <div class="grid" id="grid"></div>
   <div id="hist" style="display:none">
     <div class="notebox"><input id="noteText" placeholder="メモを残す（例: 目の色を青→黒に変更。理由: 原作に合わせる）"><button id="noteAdd">メモ追加</button></div>
@@ -189,6 +304,7 @@
     <h2 id="lbName"></h2>
     <dl id="lbMeta"></dl>
     <div class="btns">
+      <button id="lbDerive">この画像から派生生成</button>
       <button id="lbCopy">プロンプトをコピー</button>
       <button id="lbStar">★ お気に入り</button>
       <a class="btn" id="lbDl" download>原寸をダウンロード</a>
@@ -287,6 +403,7 @@ function diffWords(a, b) {
 async function load() {
   if (state.view === "hist") return loadHist();
   if (state.view === "graph") return loadGraph();
+  if (state.view === "ops") return loadOps();
   const q = new URLSearchParams();
   if (state.folder !== null) q.set("folder", state.folder);
   if (state.star) q.set("star", "true");
@@ -618,6 +735,105 @@ $("#pkAuto").onclick = () => setParent(pickerFor.path, null);
 $("#pkClose").onclick = () => $("#picker").classList.remove("open");
 $("#pkSearch").oninput = fillPicker;
 
+
+/* ---------- ops (操作) ---------- */
+let opsTimer = null, curDetail = null;
+const fd = (f) => Object.fromEntries(new FormData(f).entries());
+async function postJob(type, params, note) {
+  const r = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, params, note }) });
+  if (!r.ok) { alert("投入失敗: " + (await r.text())); return null; }
+  loadOps(); return (await r.json()).job;
+}
+async function loadOps() {
+  if (state.view !== "ops") return;
+  const [w, jobs] = await Promise.all([fetch("/api/worker").then(r => r.json()), fetch("/api/jobs").then(r => r.json())]);
+  state.worker = w; state.jobs = jobs.items;
+  // worker card
+  $("#wDot").className = "dot" + (w.online ? " on" : "");
+  $("#wAge").textContent = w.online ? `オンライン（${w.age_sec} 秒前）` : (w.ts ? `オフライン（最終 ${w.ts.replace("T", " ")}）` : "未接続");
+  const g = w.gpu || {};
+  $("#wInfo").innerHTML = w.ts ? `<span>GPU <b>${esc(g.name || "")}</b></span><span>使用率 <b>${esc(g.util ?? "-")}%</b></span><span>VRAM <b>${esc(g.mem_used ?? "-")} / ${esc(g.mem_total ?? "-")} MiB</b></span><span>温度 <b>${esc(g.temp ?? "-")}℃</b></span><span>素材 <b>${esc(w.dataset_count ?? "-")} 枚</b></span><span>LoRA <b>${(w.loras || []).length} 個</b></span>` : `<span>ワーカーからの heartbeat がまだありません。WSL2 で <code>systemctl --user start krea2-worker</code></span>`;
+  // lora selects
+  const loras = w.loras || [];
+  const sel = $("#fGen select[name=lora]"); const cur = sel.value;
+  sel.innerHTML = `<option value="">なし（ベース）</option>` + loras.map(l => `<option value="${esc(l)}">${esc(l.split("/").pop())}</option>`).join(""); sel.value = cur;
+  const runs = [...new Set(loras.map(l => (l.split("/").pop().match(/^(.+?)-\d{6}\.safetensors$/) || [])[1]).filter(Boolean))];
+  const rs = $("#fCompare select[name=run]"); const rc = rs.value; rs.innerHTML = runs.map(r => `<option>${esc(r)}</option>`).join(""); if (rc) rs.value = rc;
+  $("#dsHint").textContent = w.dataset_count !== undefined ? `素材 ${w.dataset_count} 枚で学習` : "";
+  // current job
+  const running = state.jobs.find(j => j.status === "running");
+  $("#curJobBox").style.display = running ? "" : "none";
+  if (running) {
+    const r = await fetch(`/api/jobs/${running.id}?tail=40`).then(r => r.json());
+    const p = r.progress || {};
+    $("#cjTitle").textContent = `${jobLabel(r)} · ${r.started_at ? r.started_at.slice(11, 16) + " 開始" : ""}`;
+    $("#cjInfo").innerHTML = `<span>${esc(p.phase || "")}</span>${p.step !== undefined ? `<span>step <b>${p.step} / ${p.total}</b></span>` : ""}${p.loss !== undefined ? `<span>loss <b>${Number(p.loss).toFixed(4)}</b></span>` : ""}${p.rate ? `<span><b>${esc(p.rate)}</b></span>` : ""}`;
+    const pct = p.total ? Math.round(100 * p.step / p.total) : 0;
+    $("#cjBar").className = "bar" + (r.type === "train" ? " train" : ""); $("#cjBar i").style.width = pct + "%";
+    $("#cjEta").textContent = (pct ? pct + "%" : "") + (p.eta ? ` · 残り ${p.eta}` : "") + (r.cancel ? " · 中止要求中…" : "");
+    drawLoss(r.loss_history || []);
+    $("#cjLog").textContent = (r.log || []).join("\n"); $("#cjLog").scrollTop = 1e9;
+    $("#cjCancel").onclick = () => fetch(`/api/jobs/${r.id}/cancel`, { method: "POST" }).then(loadOps);
+  }
+  // list
+  $("#jobCount").textContent = `${jobs.total} 件`;
+  const list = $("#jobList"); list.innerHTML = "";
+  for (const j of state.jobs.slice(0, 30)) {
+    const el = document.createElement("div"); el.className = "job";
+    const p = j.progress || {}; const pct = p.total ? Math.round(100 * p.step / p.total) : null;
+    el.innerHTML = `<span class="st ${j.status}">${statusLabel(j.status)}</span><div class="t">${esc(jobLabel(j))}<small>${esc(j.created_at.replace("T", " "))}${j.by ? " · " + esc(j.by) : ""}${pct !== null && j.status === "running" ? " · " + pct + "%" : ""}${j.result && j.result.summary ? " · " + esc(j.result.summary) : ""}</small></div><span class="hint">${j.status === "queued" ? "✕" : "›"}</span>`;
+    el.onclick = (e) => { if (j.status === "queued" && e.target.classList.contains("hint")) { fetch(`/api/jobs/${j.id}/cancel`, { method: "POST" }).then(loadOps); } else showJob(j.id); };
+    list.appendChild(el);
+  }
+  if (curDetail) showJob(curDetail, true);
+}
+function statusLabel(s) { return { queued: "待機", running: "実行中", done: "完了", failed: "失敗", cancelled: "中止" }[s] || s; }
+function jobLabel(j) {
+  const p = j.params || {};
+  if (j.type === "gen") return `生成: ${p.prompt || ""}${p.lora ? " [" + String(p.lora).split("/").pop() + "]" : ""}${p.count > 1 ? ` ×${p.count}` : ""}`;
+  if (j.type === "train") return `学習: ${p.run} (${p.steps} steps, dim ${p.dim})`;
+  if (j.type === "compare") return `比較: ${p.run} seed ${p.seed} — ${p.prompt || ""}`;
+  return j.type;
+}
+function drawLoss(h) {
+  const svg = $("#cjLoss"); if (!h.length) { svg.style.display = "none"; return; }
+  svg.style.display = "";
+  const xs = h.map(a => a[0]), ys = h.map(a => a[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) || 1, y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const X = (x) => 4 + (x - x0) / Math.max(1, x1 - x0) * 592, Y = (y) => 64 - (y - y0) / Math.max(1e-6, y1 - y0) * 58;
+  const pts = h.map(a => `${X(a[0]).toFixed(1)},${Y(a[1]).toFixed(1)}`).join(" ");
+  svg.innerHTML = `<polyline fill="none" stroke="#c77dff" stroke-width="1.5" points="${pts}"/><text x="6" y="12" font-size="10" fill="#8b93a5">loss ${y1.toFixed(3)}</text><text x="6" y="66" font-size="10" fill="#8b93a5">${y0.toFixed(3)}</text>`;
+}
+async function showJob(id, silent) {
+  curDetail = id;
+  const j = await fetch(`/api/jobs/${id}?tail=300`).then(r => r.json());
+  $("#jobDetail").style.display = "";
+  $("#jdTitle").textContent = `${statusLabel(j.status)} · ${jobLabel(j)}`;
+  const p = j.params || {};
+  $("#jdInfo").innerHTML = Object.entries(p).filter(([k, v]) => v !== "" && v !== null && v !== undefined).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("") + (j.note ? `<span>メモ <b>${esc(j.note)}</b></span>` : "") + (j.result && Object.keys(j.result).length ? `<span>結果 <b>${esc(JSON.stringify(j.result))}</b></span>` : "");
+  $("#jdLog").textContent = (j.log || []).join("\n") || "(ログなし)"; if (!silent) $("#jdLog").scrollTop = 1e9;
+  $("#jdRetry").onclick = () => postJob(j.type, j.params, j.note);
+  if (!silent) $("#jobDetail").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+$("#jdClose").onclick = () => { curDetail = null; $("#jobDetail").style.display = "none"; };
+document.querySelectorAll(".optabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".optabs button").forEach(x => x.className = x === b ? "on" : "");
+  for (const f of ["gen", "train", "compare", "note"]) document.getElementById("f" + f[0].toUpperCase() + f.slice(1)).style.display = f === b.dataset.f ? "" : "none";
+});
+$("#fGen").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; d.count = +d.count || 1; const note = d.note; delete d.note; if (await postJob("gen", d, note)) e.target.querySelector("[name=note]").value = ""; };
+$("#fTrain").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); const note = d.note; delete d.note; for (const k of ["steps", "save_every", "dim", "swap", "compare_seed"]) d[k] = +d[k]; await postJob("train", d, note); };
+$("#fCompare").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; const note = d.note; delete d.note; await postJob("compare", d, note); };
+$("#fNote").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); await addNote(d.text, null); e.target.reset(); alert("メモを残しました"); };
+$("#tabOps").onclick = () => setView("ops");
+$("#lbDerive").onclick = () => {
+  const it = state.items[state.idx]; const m = it.meta || {};
+  close(); setView("ops");
+  const f = $("#fGen"); f.prompt.value = m.prompt || ""; f.seed.value = m.seed ?? 0; f.parent.value = it.path; f.folder.value = it.folder || "test";
+  if (m.lora) { setTimeout(() => { f.lora.value = m.lora; }, 300); }
+  document.querySelector(".optabs button[data-f=gen]").click();
+  f.prompt.focus(); f.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
 /* ---------- lightbox ---------- */
 async function toggleStar(it) {
   const r = await fetch("/api/star/" + encodeURI(it.path), { method: "POST" }); const j = await r.json();
@@ -704,8 +920,9 @@ async function addNote(text, ref) {
 }
 function setView(v) {
   state.view = v;
-  for (const [k, id] of [["graph", "tabGraph"], ["grid", "tabGrid"], ["hist", "tabHist"]]) document.getElementById(id).className = v === k ? "on" : "";
-  $("#graph").style.display = v === "graph" ? "" : "none"; $("#grid").style.display = v === "grid" ? "" : "none"; $("#hist").style.display = v === "hist" ? "" : "none";
+  for (const [k, id] of [["graph", "tabGraph"], ["grid", "tabGrid"], ["hist", "tabHist"], ["ops", "tabOps"]]) document.getElementById(id).className = v === k ? "on" : "";
+  $("#graph").style.display = v === "graph" ? "" : "none"; $("#grid").style.display = v === "grid" ? "" : "none"; $("#hist").style.display = v === "hist" ? "" : "none"; $("#ops").style.display = v === "ops" ? "" : "none";
+  $("#folders").style.display = v === "ops" ? "none" : ""; $("#search").style.display = v === "ops" ? "none" : "";
   $("#starFilter").style.display = v === "grid" ? "" : "none"; $("#evFilters").style.display = v === "hist" ? "" : "none";
   location.hash = v === "graph" ? "" : "#" + v;
   load();
@@ -733,8 +950,9 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "Escape") close(); else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
 });
 
-setView(location.hash === "#hist" ? "hist" : location.hash === "#grid" ? "grid" : "graph");
-setInterval(() => { if (state.idx < 0) load(); }, 20000);
+setView(location.hash === "#hist" ? "hist" : location.hash === "#grid" ? "grid" : location.hash === "#ops" ? "ops" : "graph");
+setInterval(() => { if (state.idx < 0 && state.view !== "ops") load(); }, 20000);
+setInterval(() => { if (state.view === "ops") loadOps(); }, 4000);
 </script>
 </body>
 </html>
