@@ -19,8 +19,9 @@
     --c-gen: #5b9cf6; --c-dataset: #3fb950; --c-train: #c77dff; --c-note: #f5b940; --c-trash: #8b93a5;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; }
-  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  html, body { height: 100%; overflow: hidden; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; display: flex; flex-direction: column; height: 100dvh; }
+  header { flex: 0 0 auto; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   header h1 { font-size: 16px; margin: 0 8px 0 0; font-weight: 600; }
   .tabs { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
   .tabs button { border: 0; background: transparent; color: var(--fg); padding: 4px 14px; cursor: pointer; font-size: 13px; }
@@ -33,7 +34,7 @@
   .spacer { flex: 1; }
   .muted { color: var(--muted); font-size: 12px; }
   .search { background: var(--bg); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 5px 10px; font-size: 13px; min-width: 200px; }
-  main { padding: 14px; }
+  main { padding: 14px; flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; position: relative; }
   .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
@@ -71,7 +72,8 @@
   .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
   /* graph */
-  #graph { position: relative; overflow: auto; height: calc(100dvh - 70px); }
+  #graph { position: relative; }
+  #gtools { position: sticky; left: 0; }
   #gtools { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   #gtools button { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
   #gtools .legend { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-left: auto; }
@@ -171,7 +173,6 @@
     .ev .kind small { display: inline; }
     .ev .body { grid-column: 1 / -1; }
     #gtools .legend, #gtools > span.muted { display: none; }
-    #graph { height: calc(100dvh - 120px); -webkit-overflow-scrolling: touch; }
     .chips { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .chips::-webkit-scrollbar { display: none; }
     .chip { flex: 0 0 auto; }
