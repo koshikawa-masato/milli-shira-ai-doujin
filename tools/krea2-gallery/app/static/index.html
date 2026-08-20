@@ -179,6 +179,20 @@ async function copyText(t, btn) {
 
 /* ---------- word diff (LCS) ---------- */
 function tokenize(s) { return String(s || "").split(/(\s*,\s*|\s+)/).filter(t => t.length); }
+function lcsLen(A, B) {
+  const n = A.length, m = B.length;
+  let prev = new Uint16Array(m + 1), cur = new Uint16Array(m + 1);
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) cur[j] = A[i] === B[j] ? prev[j+1] + 1 : Math.max(prev[j], cur[j+1]);
+    [prev, cur] = [cur, prev];
+  }
+  return prev[0];
+}
+function similarity(a, b) {
+  const A = tokenize(a).filter(t => t.trim()), B = tokenize(b).filter(t => t.trim());
+  if (!A.length || !B.length) return 0;
+  return lcsLen(A, B) / Math.max(A.length, B.length);
+}
 function diffWords(a, b) {
   const A = tokenize(a), B = tokenize(b);
   const n = A.length, m = B.length;
@@ -259,15 +273,22 @@ function renderGrid() {
 function renderTimeline(all) {
   const tl = $("#tl"); tl.innerHTML = "";
   $("#empty").style.display = state.hist.length ? "none" : "block";
-  // 直前の生成プロンプト（同フォルダ）を時系列で引けるように、全件を古い順に見て prev を作る
+  // 比較相手 = それ以前の生成（直近 30 件）のうち最もプロンプトが似ているもの（LCS 類似度）。
+  // 似たものが無ければ差分は出さない。「いったん別の構図を試して戻る」流れでも差分がうるさくならない。
   const prevPrompt = new Map();
-  const lastByFolder = new Map();
+  const seen = [];
   for (const h of [...all].reverse()) {
     if (h.event !== "gen") continue;
     const p = (h.meta || {}).prompt || "";
-    const key = h.folder || "";
-    if (lastByFolder.has(key)) prevPrompt.set(h, lastByFolder.get(key));
-    if (p) lastByFolder.set(key, p);
+    if (!p) continue;
+    let best = null, bestScore = 0;
+    for (const q of seen.slice(-30)) {
+      if (q === p) { best = q; bestScore = 1; break; }
+      const sc = similarity(q, p);
+      if (sc > bestScore) { bestScore = sc; best = q; }
+    }
+    if (best && bestScore >= 0.35) prevPrompt.set(h, best);
+    seen.push(p);
   }
   let day = "";
   for (const h of state.hist) {
