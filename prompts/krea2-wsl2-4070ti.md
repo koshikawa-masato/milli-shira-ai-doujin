@@ -1,6 +1,7 @@
 # Krea 2 LoRA 手順書（RTX 4070 Ti 16GB / WSL2）
 
 Claude機から 4070 Ti 機の WSL2 に入って動かす前提です。
+（実機は RTX 4060 Ti 16GB / ホスト `kossy-ai-tech-1`、`ssh wsl2` で入れる。VRAM は同じ 16GB なので手順はそのまま）
 工具はろてじん式と同じ **musubi-tuner** です。
 
 - 学習: Krea 2 RAW
@@ -42,9 +43,11 @@ Windows 側に NVIDIA ドライバ最新。WSL2 内で確認。
 
 ```bash
 nvidia-smi
+# command not found の場合は WSL 専用パスを通す
+export PATH=$PATH:/usr/lib/wsl/lib
 ```
 
-4070 Ti / 16GB が出ること。
+16GB の GPU が出ること。
 Python 3.10 以上、ディスクに 80GB 以上空きが安心。
 
 ---
@@ -103,9 +106,12 @@ python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_
 Hugging Face アカウントが必要。Krea 2 のライセンス同意も必要なことがある。
 
 ```bash
-pip install huggingface_hub
+# musubi-tuner は huggingface_hub==0.34.3 を要求するので上げない（pip install -e . で入る版のまま使う）
 huggingface-cli login
 ```
+
+Krea-2-Raw / Krea-2-Turbo は **gated**。先に HF のモデルページで同意し、`huggingface-cli login` にトークンを入れる。
+VAE と Text Encoder は gated ではないので先に落とせる。
 
 ```bash
 cd ~/krea2/models
@@ -116,11 +122,15 @@ huggingface-cli download krea/Krea-2-Raw raw.safetensors --local-dir .
 # DiT Turbo
 huggingface-cli download krea/Krea-2-Turbo turbo.safetensors --local-dir .
 
-# VAE
-huggingface-cli download Comfy-Org/Qwen-Image-Edit_ComfyUI split_files/vae/qwen_image_vae.safetensors --local-dir .
+# VAE（Qwen-Image-Edit_ComfyUI には無い。Qwen-Image_ComfyUI が正）
+huggingface-cli download Comfy-Org/Qwen-Image_ComfyUI split_files/vae/qwen_image_vae.safetensors --local-dir .
 
 # Text Encoder
 huggingface-cli download Comfy-Org/Qwen3-VL text_encoders/qwen3vl_4b_bf16.safetensors --local-dir .
+
+# --local-dir . だとサブフォルダ付きで落ちるので、手順書のパスに合わせてリンクを張る
+ln -sf split_files/vae/qwen_image_vae.safetensors qwen_image_vae.safetensors
+ln -sf text_encoders/qwen3vl_4b_bf16.safetensors qwen3vl_4b_bf16.safetensors
 ```
 
 ファイル名が違う場合は実際のパスに合わせる。
@@ -280,6 +290,20 @@ pip install realesrgan
 ```bash
 rsync -avP ./dataset/images/ user@4070ti:~/krea2/dataset/images/
 rsync -avP user@4070ti:~/krea2/output/ ./output/
+```
+
+---
+
+## スクリプト（`prompts/krea2-scripts/`）
+
+WSL2 の `~/krea2/scripts/` に同じものを置いてある。
+
+- `setup_krea2.sh`: §2〜§4 の環境構築と VAE / TE 取得を一括で行う
+- `download_dit.sh`: HF ログイン後に Turbo / Raw を取得
+- `gen.sh "プロンプト" [seed] [LoRAパス] [出力dir]`: §8 の生成。LoRA 無しなら第3引数を `""`
+
+```bash
+~/krea2/scripts/gen.sh "kuropanda, 1girl, black panda hoodie" 0 ~/krea2/output/kuropanda_krea2-001200.safetensors
 ```
 
 ---
