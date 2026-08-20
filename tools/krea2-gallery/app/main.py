@@ -798,8 +798,14 @@ def _icon(size: int) -> bytes:
     return _icon_cache[size]
 
 
+ICONS = STATIC / "icons"
+
+
 @app.get("/icons/icon-{size}.png")
 def icon(size: int):
+    f = ICONS / f"icon-{size}.png"
+    if f.exists():
+        return FileResponse(f, media_type="image/png")
     if size not in (180, 192, 512):
         raise HTTPException(404)
     return Response(_icon(size), media_type="image/png")
@@ -807,7 +813,16 @@ def icon(size: int):
 
 @app.get("/apple-touch-icon.png")
 def apple_icon():
-    return Response(_icon(180), media_type="image/png")
+    f = ICONS / "icon-180.png"
+    return FileResponse(f, media_type="image/png") if f.exists() else Response(_icon(180), media_type="image/png")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    f = ICONS / "favicon.ico"
+    if not f.exists():
+        raise HTTPException(404)
+    return FileResponse(f, media_type="image/x-icon")
 
 
 @app.get("/healthz")
