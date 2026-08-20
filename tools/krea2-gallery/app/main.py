@@ -14,6 +14,8 @@
 - POST /api/event           任意イベント追記（Bearer）。JSON: {"event": "...", ...}
 - POST /api/note            UI からのメモ（トークン不要）。JSON: {"text": "...", "ref": "path(optional)"}
 - GET  /api/lineage/{path}  画像の系譜: 使った LoRA → 学習 run → 素材画像
+- GET  /api/graph           系統図: 全画像の派生元（明示 > LoRA run > プロンプト類似で推定）と副次エッジ
+- POST /api/parent/{path}   派生元の明示指定 JSON: {"parent": "<path>" | null}
 """
 from __future__ import annotations
 
@@ -415,6 +417,149 @@ def api_lineage(path: str):
         "siblings": siblings[:60],
         "notes": notes,
     }
+
+
+# ---------- graph (派生関係) ----------
+
+_tok_re = re.compile(r"(\s*,\s*|\s+)")
+
+
+def _tokens(p: str) -> list[str]:
+    return [t for t in _tok_re.split(p or "") if t.strip()]
+
+
+def _lcs_len(a: list[str], b: list[str]) -> int:
+    if not a or not b:
+        return 0
+    prev = [0] * (len(b) + 1)
+    for i in range(len(a) - 1, -1, -1):
+        cur = [0] * (len(b) + 1)
+        ai = a[i]
+        for j in range(len(b) - 1, -1, -1):
+            cur[j] = prev[j + 1] + 1 if ai == b[j] else max(prev[j], cur[j + 1])
+        prev = cur
+    return prev[0]
+
+
+def _similarity(a: str, b: str) -> float:
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta or not tb:
+        return 0.0
+    return _lcs_len(ta, tb) / max(len(ta), len(tb))
+
+
+def _write_meta(full: Path, m: dict) -> None:
+    full.with_suffix(full.suffix + ".json").write_text(json.dumps(m, ensure_ascii=False, indent=1))
+
+
+def _build_graph() -> dict:
+    items = sorted(_scan(), key=lambda x: x["mtime"])
+    by_path = {i["path"]: i for i in items}
+    hist = _read_history()
+    runs: dict[str, dict] = {}
+    for h in hist:
+        if h.get("event") == "train_start" and h.get("run"):
+            runs.setdefault(h["run"], {})
+            runs[h["run"]].update(
+                {"ts": h.get("ts"), "config": h.get("config") or {}, "dataset": h.get("dataset") or [],
+                 "dataset_folder": h.get("dataset_folder") or "dataset", "note": h.get("note")}
+            )
+        elif h.get("event") == "train_end" and h.get("run"):
+            runs.setdefault(h["run"], {})
+            runs[h["run"]].update({"end_ts": h.get("ts"), "status": h.get("status"), "checkpoints": h.get("checkpoints") or [],
+                                   "duration_min": h.get("duration_min")})
+    nodes: list[dict] = []
+    edges: list[dict] = []  # 副次エッジ（点線）
+    has_dataset = any(i["folder"] == "dataset" or i["folder"].startswith("dataset/") or (i["meta"] or {}).get("stage") == "dataset" for i in items)
+    nodes.append({"id": "base", "type": "base", "label": "Krea 2 Turbo", "parent": None, "ts": 0})
+    if has_dataset or runs:
+        nodes.append({"id": "dataset", "type": "dsgroup", "label": "素材", "parent": None, "ts": 0})
+
+    def ensure_run(name: str):
+        rid = "run:" + name
+        if not any(n["id"] == rid for n in nodes):
+            r = runs.get(name, {})
+            nodes.append({"id": rid, "type": "run", "run": name, "label": name, "parent": "dataset" if ("dataset" in {n["id"] for n in nodes}) else "base",
+                          "ts": r.get("ts") or "", "config": r.get("config") or {}, "status": r.get("status"),
+                          "checkpoints": r.get("checkpoints") or [], "duration_min": r.get("duration_min"), "note": r.get("note"),
+                          "dataset_count": len(r.get("dataset") or []), "recorded": bool(r)})
+        return rid
+
+    for name in runs:
+        ensure_run(name)
+
+    gens_so_far: list[dict] = []
+    for it in items:
+        m = it["meta"] or {}
+        is_ds = it["folder"] == "dataset" or it["folder"].startswith("dataset/") or m.get("stage") == "dataset"
+        nid = "img:" + it["path"]
+        explicit = m.get("parent") if m.get("parent") in by_path and m.get("parent") != it["path"] else None
+        node = {"id": nid, "type": "dataset" if is_ds else "gen", "path": it["path"], "folder": it["folder"], "name": it["name"],
+                "meta": m, "ts": it["mtime"], "star": it["star"], "parent": None, "inferred": False, "w": it["w"], "h": it["h"]}
+        if is_ds:
+            node["parent"] = "dataset"
+            if explicit:
+                edges.append({"from": "img:" + explicit, "to": nid, "kind": "素材化"})
+        else:
+            run, _step = _run_of(m)
+            rid = ensure_run(run) if run else None
+            if explicit:
+                node["parent"] = "img:" + explicit
+                if rid:
+                    edges.append({"from": rid, "to": nid, "kind": "LoRA"})
+            elif rid:
+                node["parent"] = rid
+            else:
+                best, best_score = None, 0.0
+                p = m.get("prompt") or ""
+                for cand in gens_so_far[-40:]:
+                    cm = cand["meta"] or {}
+                    sc = _similarity(cm.get("prompt") or "", p)
+                    if cand["folder"] == it["folder"]:
+                        sc += 0.08
+                    if cm.get("seed") == m.get("seed"):
+                        sc += 0.04
+                    if sc > best_score:
+                        best, best_score = cand, sc
+                if best and best_score >= 0.4:
+                    node["parent"] = "img:" + best["path"]
+                    node["inferred"] = True
+                else:
+                    node["parent"] = "base"
+            gens_so_far.append(it)
+        nodes.append(node)
+    ids = {n["id"] for n in nodes}
+    edges = [e for e in edges if e["from"] in ids and e["to"] in ids]
+    return {"nodes": nodes, "edges": edges}
+
+
+@app.get("/api/graph")
+def api_graph():
+    return _build_graph()
+
+
+@app.post("/api/parent/{path:path}")
+def api_parent(path: str, body: dict = Body(...)):
+    rel = _safe_rel(path).as_posix()
+    full = IMAGES / rel
+    if not full.exists():
+        raise HTTPException(404)
+    parent = body.get("parent")
+    if parent:
+        prel = _safe_rel(parent).as_posix()
+        if prel == rel or not (IMAGES / prel).exists():
+            raise HTTPException(400, "bad parent")
+        parent = prel
+    with _lock:
+        m = _meta(full)
+        old = m.get("parent")
+        if parent:
+            m["parent"] = parent
+        else:
+            m.pop("parent", None)
+        _write_meta(full, m)
+        _append_history({"event": "reparent", "path": rel, "parent": parent, "old_parent": old})
+    return {"ok": True, "path": rel, "parent": parent}
 
 
 @app.get("/healthz")

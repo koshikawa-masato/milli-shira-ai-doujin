@@ -1,6 +1,7 @@
 #!/bin/bash
 # 使い方: gen.sh "プロンプト" [seed] [LoRAパス] [出力dir]
 #   環境変数 NOTE="..." を付けると「なぜこのプロンプトにしたか」を一緒に記録できる
+#   環境変数 PARENT="test/2026...png" で派生元画像（ギャラリー上の相対パス）を明示できる。無指定ならプロンプト類似で推定
 #   例: NOTE="耳を大きく" gen.sh "kuropanda, big panda ears, ..." 0 "" ~/krea2/output/test
 # Krea 2 Turbo で生成し、Pi5 ギャラリーへ自動アップロード。LoRA 無しなら第3引数を "" にする。
 set -e
@@ -31,9 +32,9 @@ python src/musubi_tuner/krea2_generate_image.py \
   "${ARGS[@]}"
 NEW=$(ls -t "$OUT"/*.png 2>/dev/null | head -1)
 if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
-  META=$(python3 - "$PROMPT" "$SEED" "$LORA" "$DIT" $STEPS $GUIDANCE $MU "${NOTE:-}" <<'PY'
+  META=$(python3 - "$PROMPT" "$SEED" "$LORA" "$DIT" $STEPS $GUIDANCE $MU "${NOTE:-}" "${PARENT:-}" <<'PY'
 import json,sys,re,os
-p,seed,lora,dit,steps,g,mu,note=sys.argv[1:]
+p,seed,lora,dit,steps,g,mu,note,parent=sys.argv[1:]
 run=step=None
 if lora:
     m=re.match(r"^(.+?)-(\d{6})\.safetensors$", os.path.basename(lora))
@@ -41,7 +42,7 @@ if lora:
     else: run=os.path.basename(lora).replace(".safetensors","")
 print(json.dumps({"stage":"gen","prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":1.0 if lora else None,
   "run":run,"step":step,"dit":os.path.basename(dit),"steps":int(steps),"guidance_scale":float(g),"mu":float(mu),
-  "width":1024,"height":1024,"note":note or None},ensure_ascii=False))
+  "width":1024,"height":1024,"note":note or None,"parent":parent or None},ensure_ascii=False))
 PY
 )
   echo "$META" > "$NEW.json"

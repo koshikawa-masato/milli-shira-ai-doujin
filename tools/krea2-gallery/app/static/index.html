@@ -62,6 +62,58 @@
   .notebox { display: flex; gap: 8px; margin: 0 auto 10px; max-width: 1100px; }
   .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+  /* graph */
+  #graph { position: relative; overflow: auto; height: calc(100vh - 70px); }
+  #gtools { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  #gtools button { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+  #gtools .legend { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-left: auto; }
+  #gtools .legend i { display: inline-block; width: 18px; border-top: 2px solid var(--muted); vertical-align: middle; margin-right: 4px; }
+  #gtools .legend i.dash { border-top-style: dashed; }
+  #gtools .legend i.inf { border-top-color: var(--c-gen); opacity: .5; }
+  #gcanvas { position: relative; transform-origin: 0 0; }
+  #gcanvas svg { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  #gcanvas svg path { fill: none; stroke: #4b5363; stroke-width: 1.5; }
+  #gcanvas svg path.inferred { stroke-dasharray: 4 3; opacity: .7; }
+  #gcanvas svg path.secondary { stroke: var(--c-train); stroke-dasharray: 6 4; }
+  #gcanvas svg path.secondary.ds { stroke: var(--c-dataset); }
+  #gcanvas svg text { font-size: 10px; fill: var(--muted); }
+  #gcanvas svg text .add { fill: var(--add); }
+  #gcanvas svg text .del { fill: var(--del); }
+  .gn { position: absolute; width: 150px; height: 112px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 6px; font-size: 11px; color: var(--muted); }
+  .gn:hover { border-color: var(--fg); }
+  .gn img { width: 68px; height: 68px; object-fit: cover; border-radius: 5px; background: #000; display: block; }
+  .gn .l1 { margin-top: 4px; color: var(--fg); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .gn .l2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .gn.gen { border-left: 3px solid var(--c-gen); }
+  .gn.dataset { border-left: 3px solid var(--c-dataset); }
+  .gn.run { border-left: 3px solid var(--c-train); justify-content: center; }
+  .gn.run .l1 { font-size: 12px; }
+  .gn.base, .gn.dsgroup { justify-content: center; height: 60px; }
+  .gn.base { border-left: 3px solid var(--muted); }
+  .gn.dsgroup { border-left: 3px solid var(--c-dataset); }
+  .gn.base .l1, .gn.dsgroup .l1, .gn.run .l1 { white-space: normal; text-align: center; }
+  .gn .star { position: absolute; top: 3px; right: 5px; color: var(--accent); font-size: 12px; }
+  .gn .cur { position: absolute; inset: 0; border: 2px solid var(--accent); border-radius: 8px; pointer-events: none; }
+  .gn.bundle { justify-content: center; background: linear-gradient(180deg, var(--panel), var(--bg)); border-style: dashed; }
+  .gn.bundle .stack { position: relative; width: 80px; height: 68px; }
+  .gn.bundle .stack img { position: absolute; width: 56px; height: 56px; border: 1px solid var(--line); }
+  .gn.bundle.open { height: 40px; width: 110px; }
+  .gn.bundle.open .l1 { margin: 0; }
+  .gtip { position: fixed; z-index: 30; background: #000; color: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: 12px; max-width: 420px; pointer-events: none; white-space: pre-wrap; display: none; }
+  #picker { position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 40; display: none; align-items: center; justify-content: center; }
+  #picker.open { display: flex; }
+  #picker .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; width: min(920px, 94vw); max-height: 84vh; overflow: auto; padding: 14px; }
+  #picker .box h3 { margin: 0 0 10px; font-size: 14px; }
+  #picker .pg { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  #picker .pg div { cursor: pointer; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; font-size: 10px; color: var(--muted); }
+  #picker .pg div:hover { border-color: var(--accent); }
+  #picker .pg img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+  #picker .pg span { display: block; padding: 3px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #picker .act { display: flex; gap: 8px; margin-bottom: 10px; }
+  #picker button { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  #lb .parent { display: flex; align-items: center; gap: 8px; }
+  #lb .parent img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; cursor: pointer; }
+  #lb .parent small { color: var(--muted); display: block; }
   /* lightbox */
   #lb { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; z-index: 20; }
   #lb.open { display: grid; grid-template-columns: 1fr 380px; }
@@ -99,7 +151,7 @@
 <body>
 <header>
   <h1>Krea2 Gallery</h1>
-  <div class="tabs"><button id="tabGrid" class="on">画像</button><button id="tabHist">履歴</button></div>
+  <div class="tabs"><button id="tabGraph">系統図</button><button id="tabGrid">画像</button><button id="tabHist">履歴</button></div>
   <div class="chips" id="folders"></div>
   <div class="chips" id="evFilters" style="display:none"></div>
   <button class="chip" id="starFilter">★ お気に入りのみ</button>
@@ -109,6 +161,17 @@
   <span class="muted" id="updated"></span>
 </header>
 <main>
+  <div id="graph" style="display:none">
+    <div id="gtools">
+      <button id="gExpand">すべて展開</button><button id="gCollapse">束ねる</button>
+      <button id="gZoomOut">−</button><span class="muted" id="gZoomLabel">100%</span><button id="gZoomIn">＋</button>
+      <button id="gFit">最新へ</button>
+      <span class="muted">兄弟 6 枚以上・連鎖 6 件以上は 5 つずつ束ねます（クリックで開閉）。矢印の緑字 = 追加された語</span>
+      <span class="legend"><span><i></i>派生（指定）</span><span><i class="inf"></i>派生（推定）</span><span><i class="dash" style="border-color:var(--c-train)"></i>LoRA</span><span><i class="dash" style="border-color:var(--c-dataset)"></i>素材化</span></span>
+    </div>
+    <div id="gcanvas"><svg id="gsvg"></svg><div id="gnodes"></div></div>
+  </div>
+  <div class="gtip" id="gtip"></div>
   <div class="grid" id="grid"></div>
   <div id="hist" style="display:none">
     <div class="notebox"><input id="noteText" placeholder="メモを残す（例: 目の色を青→黒に変更。理由: 原作に合わせる）"><button id="noteAdd">メモ追加</button></div>
@@ -131,12 +194,22 @@
       <a class="btn" id="lbDl" download>原寸をダウンロード</a>
       <button class="danger" id="lbDel">ゴミ箱へ</button>
     </div>
+    <h3>派生元</h3>
+    <div class="parent" id="lbParent"></div>
     <div id="lineage"></div>
     <h3>この画像へのメモ</h3>
     <div id="lbNotes"></div>
     <div class="notein"><input id="lbNoteText" placeholder="気づき・次に試すこと"><button id="lbNoteAdd">追加</button></div>
     <p class="muted" style="margin-top:14px">← → で前後、Esc で閉じる、S でお気に入り</p>
   </aside>
+</div>
+
+<div id="picker">
+  <div class="box">
+    <h3>派生元の画像を選ぶ</h3>
+    <div class="act"><button id="pkAuto">自動推定に戻す</button><button id="pkClose">閉じる</button><input class="search" id="pkSearch" placeholder="プロンプトで絞り込み" style="margin-left:auto"></div>
+    <div class="pg" id="pkGrid"></div>
+  </div>
 </div>
 
 <script>
@@ -148,7 +221,7 @@ const EV = {
   note:        { label: "メモ",   color: "var(--c-note)" },
   trash:       { label: "ゴミ箱", color: "var(--c-trash)" },
 };
-const state = { view: "grid", folder: null, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
+const state = { view: "graph", folder: null, graph: null, gExp: new Map(JSON.parse(localStorage.getItem("gExp") || "[]")), gZoom: 1, gHighlight: null, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
                 items: [], folders: [], hist: [], idx: -1 };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -213,6 +286,7 @@ function diffWords(a, b) {
 /* ---------- load ---------- */
 async function load() {
   if (state.view === "hist") return loadHist();
+  if (state.view === "graph") return loadGraph();
   const q = new URLSearchParams();
   if (state.folder !== null) q.set("folder", state.folder);
   if (state.star) q.set("star", "true");
@@ -341,6 +415,209 @@ function renderTimeline(all) {
   }
 }
 
+
+/* ---------- graph (系統図) ---------- */
+const GW = 150, GH = 112, GCOLW = 260, GROWH = 128, GPAD = 24, BUNDLE = 5;
+function expKey(k, def) { return state.gExp.has(k) ? state.gExp.get(k) : def; }
+function setExp(k, v) { state.gExp.set(k, v); localStorage.setItem("gExp", JSON.stringify([...state.gExp])); renderGraph(); }
+function tsOf(n) { return typeof n.ts === "number" ? n.ts : (n.ts ? Date.parse(n.ts) / 1000 : 0); }
+
+async function loadGraph() {
+  const r = await fetch("/api/graph"); state.graph = await r.json();
+  state.folders = [...new Set(state.graph.nodes.filter(n => n.path).map(n => n.folder))].sort();
+  renderFolders(); renderGraph();
+  const n = state.graph.nodes.filter(n => n.path).length;
+  $("#count").textContent = `${n} 枚`;
+  $("#updated").textContent = "更新 " + new Date().toLocaleTimeString("ja-JP");
+}
+
+function buildDisplay() {
+  const G = state.graph; if (!G) return [];
+  const byId = new Map(G.nodes.map(n => [n.id, n]));
+  const kids = new Map();
+  for (const n of G.nodes) { if (n.parent && byId.has(n.parent)) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); } }
+  for (const arr of kids.values()) arr.sort((a, b) => tsOf(a) - tsOf(b));
+  function subtreeHasFolder(n) { const k = kids.get(n.id) || []; return k.some(c => c.folder === state.folder || subtreeHasFolder(c)); }
+  const visible = (n) => state.folder === null || !n.path || n.folder === state.folder || subtreeHasFolder(n);
+  const mk = (n) => ({ kind: "node", node: n, id: n.id, children: processKids(n) });
+  function chunk(arr) { const out = []; for (let i = 0; i < arr.length; i += BUNDLE) out.push(arr.slice(i, i + BUNDLE)); return out; }
+  function processKids(n) {
+    const k = (kids.get(n.id) || []).filter(visible);
+    if (k.length === 0) return [];
+    if (k.length === 1) {
+      const chain = []; let cur = k[0];
+      while (true) { chain.push(cur); const ck = (kids.get(cur.id) || []).filter(visible); if (ck.length === 1) cur = ck[0]; else break; }
+      if (chain.length <= BUNDLE) return [chainDisplay(chain)];
+      const segs = chunk(chain); let next = null;
+      for (let i = segs.length - 1; i >= 0; i--) {
+        const key = `${n.id}/c${i}`, open = expKey(key, i === segs.length - 1), seg = segs[i], last = i === segs.length - 1;
+        if (open) next = { kind: "bundle", open: true, key, items: seg, orient: "h", id: key, children: [chainDisplay(seg, last ? null : next)] };
+        else next = { kind: "bundle", open: false, key, items: seg, orient: "h", id: key, children: last ? processKids(seg[seg.length - 1]) : [next] };
+      }
+      return [next];
+    }
+    if (k.length > BUNDLE) {
+      const segs = chunk(k);
+      return segs.map((seg, i) => { const key = `${n.id}/s${i}`, open = expKey(key, i === segs.length - 1);
+        return { kind: "bundle", open, key, items: seg, orient: "v", id: key, children: open ? seg.map(mk) : [] }; });
+    }
+    return k.map(mk);
+  }
+  function chainDisplay(chain, tail) {
+    let d = null;
+    for (let i = chain.length - 1; i >= 0; i--) {
+      const n = chain[i];
+      const children = d ? [d] : (tail ? [tail] : processKids(n));
+      d = { kind: "node", node: n, id: n.id, children };
+    }
+    return d;
+  }
+  return G.nodes.filter(n => !n.parent && visible(n)).map(mk);
+}
+
+function layout(roots) {
+  const h = (d) => { d._h = d.children.length ? d.children.reduce((a, c) => a + h(c), 0) : 1; return d._h; };
+  const place = (d, depth, top) => {
+    d.depth = depth;
+    if (!d.children.length) { d.row = top; return; }
+    let t = top; for (const c of d.children) { place(c, depth + 1, t); t += c._h; }
+    d.row = (d.children[0].row + d.children[d.children.length - 1].row) / 2;
+  };
+  let top = 0; for (const r of roots) { h(r); place(r, 0, top); top += r._h; }
+  const all = []; const walk = (d) => { all.push(d); d.children.forEach(walk); }; roots.forEach(walk);
+  for (const d of all) {
+    d.w = d.kind === "bundle" && d.open ? 110 : GW;
+    d.hh = d.kind === "bundle" && d.open ? 40 : (d.kind === "node" && (d.node.type === "base" || d.node.type === "dsgroup") ? 60 : GH);
+    d.x = GPAD + d.depth * GCOLW; d.y = GPAD + d.row * GROWH + (GH - d.hh) / 2;
+  }
+  return all;
+}
+
+function addedWords(a, b) {
+  const A = new Set(tokenize(a).filter(t => t.trim())), B = tokenize(b).filter(t => t.trim());
+  const add = B.filter(t => !A.has(t)); const Bs = new Set(B); const del = [...A].filter(t => !Bs.has(t));
+  return { add, del };
+}
+
+function renderGraph() {
+  if (!state.graph) return;
+  const roots = buildDisplay(); const all = layout(roots);
+  const nodesEl = $("#gnodes"), svg = $("#gsvg"); nodesEl.innerHTML = ""; svg.innerHTML = "";
+  const maxX = Math.max(0, ...all.map(d => d.x + d.w)) + GPAD, maxY = Math.max(0, ...all.map(d => d.y + d.hh)) + GPAD;
+  const cv = $("#gcanvas"); cv.style.width = maxX + "px"; cv.style.height = maxY + "px"; cv.style.transform = `scale(${state.gZoom})`;
+  svg.setAttribute("width", maxX); svg.setAttribute("height", maxY);
+  $("#gZoomLabel").textContent = Math.round(state.gZoom * 100) + "%";
+  const pos = new Map();
+  for (const d of all) { if (d.kind === "node") pos.set(d.node.id, d); else if (!d.open) d.items.forEach(n => pos.set(n.id, d)); }
+  $("#empty").style.display = all.length ? "none" : "block";
+  const NS = "http://www.w3.org/2000/svg";
+  const edge = (a, b, cls, label) => {
+    const x1 = a.x + a.w, y1 = a.y + a.hh / 2, x2 = b.x, y2 = b.y + b.hh / 2, mx = (x1 + x2) / 2;
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`); if (cls) p.setAttribute("class", cls); svg.appendChild(p);
+    if (label) { const t = document.createElementNS(NS, "text"); t.setAttribute("x", mx); t.setAttribute("y", (y1 + y2) / 2 - 5); t.setAttribute("text-anchor", "middle"); t.innerHTML = label; svg.appendChild(t); }
+  };
+  for (const d of all) for (const c of d.children) {
+    let cls = "", label = "";
+    if (c.kind === "node" && c.node.inferred) cls = "inferred";
+    if (d.kind === "node" && c.kind === "node" && d.node.type === "gen" && c.node.type === "gen") {
+      const { add, del } = addedWords(d.node.meta.prompt, c.node.meta.prompt);
+      const a = add.slice(0, 2).map(esc).join(" "), more = add.length > 2 ? ` +${add.length - 2}` : "";
+      label = `${a ? `<tspan class="add">+${a}${more}</tspan>` : ""}${del.length ? ` <tspan class="del">−${del.length}</tspan>` : ""}`;
+      if (!add.length && !del.length) label = `<tspan>seed ${esc(c.node.meta.seed ?? "")}</tspan>`;
+    }
+    edge(d, c, cls, label);
+  }
+  for (const e of state.graph.edges) { const a = pos.get(e.from), b = pos.get(e.to); if (a && b && a !== b) edge(a, b, "secondary" + (e.kind === "素材化" ? " ds" : ""), `<tspan>${esc(e.kind)}</tspan>`); }
+  for (const d of all) {
+    const el = document.createElement("div"); el.style.left = d.x + "px"; el.style.top = d.y + "px"; el.style.width = d.w + "px"; el.style.height = d.hh + "px";
+    if (d.kind === "bundle") {
+      const t0 = tsOf(d.items[0]), t1 = tsOf(d.items[d.items.length - 1]);
+      el.className = "gn bundle" + (d.open ? " open" : "");
+      if (d.open) el.innerHTML = `<div class="l1">▾ ${d.items.length} 件を束ねる</div>`;
+      else el.innerHTML = `<div class="stack">${d.items.slice(0, 3).map((n, i) => n.path ? `<img src="/thumb/${encodeURI(n.path)}" style="left:${i * 12}px;top:${i * 6}px">` : "").join("")}</div><div class="l1">▸ ${d.items.length} 件（${fmtTime(t0)}〜${fmtTime(t1).slice(-5)}）</div>`;
+      el.onclick = () => setExp(d.key, !d.open);
+      el.onmouseenter = (ev) => tip(ev, d.items.map(n => (n.meta && (n.meta.prompt || n.meta.caption)) || n.label || n.id).join("\n——\n"));
+    } else {
+      const n = d.node; el.className = "gn " + n.type;
+      if (n.type === "gen" || n.type === "dataset") {
+        const m = n.meta || {};
+        el.innerHTML = `<img loading="lazy" src="/thumb/${encodeURI(n.path)}">${n.star ? `<span class="star">★</span>` : ""}
+          <div class="l1">${n.type === "dataset" ? esc(m.caption || n.name) : esc(loraShort(m) || "base")}</div>
+          <div class="l2">${n.type === "dataset" ? esc(m.source || "") : `seed ${esc(m.seed ?? "")} · ${fmtTime(n.ts)}`}</div>${state.gHighlight === n.id ? `<div class="cur"></div>` : ""}`;
+        el.onclick = () => openPath(n.path);
+        el.onmouseenter = (ev) => tip(ev, (m.prompt || m.caption || n.name) + (m.note ? "\n\nメモ: " + m.note : "") + (n.inferred ? "\n\n(派生元はプロンプト類似で推定。ライトボックスで変更可)" : ""));
+      } else if (n.type === "run") {
+        const c = n.config || {};
+        el.innerHTML = `<div class="l1">LoRA ${esc(n.run)}</div><div class="l2">${n.recorded ? `${esc(c.max_train_steps ?? "?")} steps · dim ${esc(c.network_dim ?? "?")} · lr ${esc(c.learning_rate ?? "?")}` : "学習記録なし"}</div><div class="l2">${n.status ? esc(n.status) + (n.duration_min ? ` · ${n.duration_min} 分` : "") : ""}</div>`;
+        el.onmouseenter = (ev) => tip(ev, `run ${n.run}\n${Object.entries(c).map(([k, v]) => k + " = " + v).join("\n")}${n.checkpoints && n.checkpoints.length ? "\n\ncheckpoints:\n" + n.checkpoints.join("\n") : ""}${n.note ? "\n\nメモ: " + n.note : ""}`);
+        el.onclick = () => setView("hist");
+      } else {
+        el.innerHTML = `<div class="l1">${esc(n.label)}</div>`;
+        if (n.type === "dsgroup") el.onclick = () => { state.folder = "dataset"; setView("grid"); };
+      }
+    }
+    el.onmouseleave = hideTip; el.onmousemove = moveTip;
+    nodesEl.appendChild(el);
+  }
+}
+function tip(ev, text) { const t = $("#gtip"); t.textContent = text; t.style.display = "block"; moveTip(ev); }
+function moveTip(ev) { const t = $("#gtip"); const x = Math.min(ev.clientX + 14, window.innerWidth - 440), y = Math.min(ev.clientY + 14, window.innerHeight - t.offsetHeight - 10); t.style.left = x + "px"; t.style.top = y + "px"; }
+function hideTip() { $("#gtip").style.display = "none"; }
+function gExpandAll() {
+  let guard = 0;
+  while (guard++ < 30) {
+    const ks = []; const w = (d) => { if (d.kind === "bundle" && !d.open) ks.push(d.key); d.children.forEach(w); }; buildDisplay().forEach(w);
+    if (!ks.length) break; for (const k of ks) state.gExp.set(k, true);
+  }
+  localStorage.setItem("gExp", JSON.stringify([...state.gExp])); renderGraph();
+}
+$("#gExpand").onclick = gExpandAll;
+$("#gCollapse").onclick = () => { state.gExp = new Map(); localStorage.removeItem("gExp"); renderGraph(); };
+$("#gZoomIn").onclick = () => { state.gZoom = Math.min(2, state.gZoom + 0.1); renderGraph(); };
+$("#gZoomOut").onclick = () => { state.gZoom = Math.max(0.3, state.gZoom - 0.1); renderGraph(); };
+$("#gFit").onclick = () => { const els = [...document.querySelectorAll("#gnodes .gn.gen")].sort((a, b) => parseFloat(b.style.left) - parseFloat(a.style.left)); if (els[0]) els[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); };
+$("#tabGraph").onclick = () => setView("graph");
+
+/* ---------- parent picker ---------- */
+function parentOf(path) {
+  if (!state.graph) return null;
+  const n = state.graph.nodes.find(x => x.path === path); if (!n) return null;
+  return { node: n, parent: state.graph.nodes.find(x => x.id === n.parent) };
+}
+async function renderParentRow(it) {
+  const box = $("#lbParent"); box.innerHTML = "";
+  if (!state.graph) { try { const r = await fetch("/api/graph"); state.graph = await r.json(); } catch (e) { return; } }
+  const info = parentOf(it.path); if (!info) return;
+  const p = info.parent; let html = "";
+  if (p && p.path) html += `<img src="/thumb/${encodeURI(p.path)}" data-p="${esc(p.path)}" title="${esc((p.meta || {}).prompt || p.name)}"><div><div>${esc(((p.meta || {}).prompt || p.name).slice(0, 60))}</div><small>${info.node.inferred ? "プロンプト類似から推定" : "指定"}</small></div>`;
+  else if (p) html += `<div>${esc(p.label || p.run || p.id)}<small>${p.type === "run" ? "LoRA 学習 run" : p.type === "dsgroup" ? "素材" : "ベースモデル"}</small></div>`;
+  else html += `<div class="muted">なし</div>`;
+  html += `<button id="lbPick" style="margin-left:auto">変更</button>`;
+  box.innerHTML = html;
+  box.querySelectorAll("img[data-p]").forEach(im => im.onclick = () => openPath(im.dataset.p));
+  $("#lbPick").onclick = () => openPicker(it);
+}
+let pickerFor = null;
+function openPicker(it) { pickerFor = it; $("#pkSearch").value = ""; fillPicker(); $("#picker").classList.add("open"); }
+function fillPicker() {
+  const q = $("#pkSearch").value.toLowerCase(); const g = $("#pkGrid"); g.innerHTML = "";
+  const cands = (state.graph ? state.graph.nodes : []).filter(n => n.path && n.path !== pickerFor.path && (!q || ((n.meta || {}).prompt || (n.meta || {}).caption || "").toLowerCase().includes(q))).sort((a, b) => tsOf(b) - tsOf(a)).slice(0, 120);
+  for (const n of cands) {
+    const d = document.createElement("div"); d.innerHTML = `<img loading="lazy" src="/thumb/${encodeURI(n.path)}"><span>${esc((n.meta || {}).prompt || (n.meta || {}).caption || n.name)}</span>`;
+    d.title = (n.meta || {}).prompt || n.name; d.onclick = () => setParent(pickerFor.path, n.path); g.appendChild(d);
+  }
+}
+async function setParent(path, parent) {
+  await fetch("/api/parent/" + encodeURI(path), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parent }) });
+  $("#picker").classList.remove("open");
+  const r = await fetch("/api/graph"); state.graph = await r.json();
+  if (state.idx >= 0) { const it = state.items[state.idx]; it.meta = (state.graph.nodes.find(n => n.path === it.path) || {}).meta || it.meta; renderParentRow(it); }
+  if (state.view === "graph") renderGraph();
+}
+$("#pkAuto").onclick = () => setParent(pickerFor.path, null);
+$("#pkClose").onclick = () => $("#picker").classList.remove("open");
+$("#pkSearch").oninput = fillPicker;
+
 /* ---------- lightbox ---------- */
 async function toggleStar(it) {
   const r = await fetch("/api/star/" + encodeURI(it.path), { method: "POST" }); const j = await r.json();
@@ -356,7 +633,8 @@ async function openPath(path) {
 function open(i) {
   state.idx = i; const it = state.items[i];
   $("#lbImg").src = "/img/" + encodeURI(it.path);
-  fillAside(it); loadLineage(it);
+  fillAside(it); loadLineage(it); renderParentRow(it);
+  state.gHighlight = "img:" + it.path;
   $("#lb").classList.add("open");
 }
 function fillAside(it) {
@@ -412,7 +690,7 @@ async function loadLineage(it) {
   box.querySelectorAll("a[data-p]").forEach(a => a.onclick = () => openPath(a.dataset.p));
   $("#lbNotes").innerHTML = L.notes.length ? L.notes.map(n => `<div class="lnote">${esc(n.text)}<small>${esc(n.ts.replace("T", " "))}</small></div>`).join("") : `<div class="muted">なし</div>`;
 }
-function close() { $("#lb").classList.remove("open"); state.idx = -1; }
+function close() { $("#lb").classList.remove("open"); state.idx = -1; if (state.view === "graph") loadGraph(); }
 function step(d) { if (state.idx < 0) return; open((state.idx + d + state.items.length) % state.items.length); }
 async function del() {
   if (state.idx < 0) return;
@@ -426,10 +704,10 @@ async function addNote(text, ref) {
 }
 function setView(v) {
   state.view = v;
-  $("#tabGrid").className = v === "grid" ? "on" : ""; $("#tabHist").className = v === "hist" ? "on" : "";
-  $("#grid").style.display = v === "grid" ? "" : "none"; $("#hist").style.display = v === "hist" ? "" : "none";
+  for (const [k, id] of [["graph", "tabGraph"], ["grid", "tabGrid"], ["hist", "tabHist"]]) document.getElementById(id).className = v === k ? "on" : "";
+  $("#graph").style.display = v === "graph" ? "" : "none"; $("#grid").style.display = v === "grid" ? "" : "none"; $("#hist").style.display = v === "hist" ? "" : "none";
   $("#starFilter").style.display = v === "grid" ? "" : "none"; $("#evFilters").style.display = v === "hist" ? "" : "none";
-  location.hash = v === "hist" ? "#hist" : "";
+  location.hash = v === "graph" ? "" : "#" + v;
   load();
 }
 
@@ -449,12 +727,13 @@ $("#tabHist").onclick = () => setView("hist");
 let _qt; $("#search").oninput = (e) => { clearTimeout(_qt); _qt = setTimeout(() => { state.q = e.target.value; load(); }, 250); };
 $("#lb .view").onclick = (e) => { if (e.target === e.currentTarget) close(); };
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("#picker").classList.contains("open")) { $("#picker").classList.remove("open"); return; }
   if (!$("#lb").classList.contains("open") || e.target.tagName === "INPUT") return;
   if (e.key === "ArrowLeft") step(-1); else if (e.key === "ArrowRight") step(1);
   else if (e.key === "Escape") close(); else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
 });
 
-setView(location.hash === "#hist" ? "hist" : "grid");
+setView(location.hash === "#hist" ? "hist" : location.hash === "#grid" ? "grid" : "graph");
 setInterval(() => { if (state.idx < 0) load(); }, 20000);
 </script>
 </body>

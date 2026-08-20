@@ -2,6 +2,7 @@
 # 学習素材（タネ画像）を dataset に追加し、作り方ごと記録する
 # 使い方: dataset_add.sh <画像> "<キャプション>" [出所] ["作り方プロンプト"] ["メモ"]
 #   出所の例: nano-banana / claude / krea2-base / hand / photo
+#   環境変数 PARENT="test/xxx.png" で「この生成画像を素材化した」関係を記録できる
 #   例: dataset_add.sh ~/in/a.png "kuropanda, 1girl, black panda hoodie, front view" nano-banana \
 #         "A girl in a black panda hoodie, anime style, front view, white background" "正面の基準画像"
 set -e
@@ -16,10 +17,10 @@ while [ -e "$DS/$NAME.png" ] || [ -e "$DS/$NAME.jpg" ]; do N=$((N+1)); NAME=$(pr
 DEST="$DS/$NAME.$EXT"
 cp "$SRC" "$DEST"
 printf '%s\n' "$CAPTION" > "$DS/$NAME.txt"
-META=$(python3 - "$CAPTION" "$SOURCE" "$HOW" "$NOTE" "$(basename "$SRC")" <<'PY'
+META=$(python3 - "$CAPTION" "$SOURCE" "$HOW" "$NOTE" "$(basename "$SRC")" "${PARENT:-}" <<'PY'
 import json,sys
-c,s,h,n,o=sys.argv[1:]
-print(json.dumps({"stage":"dataset","caption":c,"source":s,"prompt":h or None,"note":n or None,"original":o},ensure_ascii=False))
+c,s,h,n,o,parent=sys.argv[1:]
+print(json.dumps({"stage":"dataset","caption":c,"source":s,"prompt":h or None,"note":n or None,"original":o,"parent":parent or None},ensure_ascii=False))
 PY
 )
 echo "$META" > "$DEST.json"
