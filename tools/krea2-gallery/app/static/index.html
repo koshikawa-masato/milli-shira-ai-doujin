@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Krea2 Gallery</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b35; --fg: #e6e8ee; --muted: #8b93a5;
+    --accent: #f5b940; --danger: #e5534b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; font-weight: 600; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: 13px; }
+  .chip.on { background: var(--accent); color: #000; border-color: var(--accent); }
+  .spacer { flex: 1; }
+  .muted { color: var(--muted); font-size: 12px; }
+  main { padding: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; position: relative; }
+  .card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #000; }
+  .card .cap { padding: 8px 10px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+  .card .cap b { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .star { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.55); border: 0; color: #fff; font-size: 16px; border-radius: 6px; padding: 2px 7px; cursor: pointer; }
+  .card .star.on { color: var(--accent); }
+  .card .lora { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; border-radius: 6px; padding: 2px 7px; }
+  .empty { color: var(--muted); text-align: center; padding: 60px 0; }
+  /* lightbox */
+  #lb { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; z-index: 20; }
+  #lb.open { display: grid; grid-template-columns: 1fr 340px; }
+  #lb .view { display: flex; align-items: center; justify-content: center; padding: 16px; min-width: 0; }
+  #lb .view img { max-width: 100%; max-height: calc(100vh - 32px); object-fit: contain; }
+  #lb aside { background: var(--panel); border-left: 1px solid var(--line); padding: 16px; overflow: auto; font-size: 13px; }
+  #lb aside h2 { font-size: 14px; margin: 0 0 10px; word-break: break-all; }
+  #lb dl { margin: 0; }
+  #lb dt { color: var(--muted); font-size: 11px; margin-top: 10px; }
+  #lb dd { margin: 2px 0 0; word-break: break-word; white-space: pre-wrap; }
+  #lb .btns { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  #lb button, #lb a.btn { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 6px; padding: 6px 12px; cursor: pointer; text-decoration: none; font-size: 13px; }
+  #lb button.on { border-color: var(--accent); color: var(--accent); }
+  #lb button.danger { border-color: var(--danger); color: var(--danger); }
+  #lb .nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 28px; width: 44px; height: 80px; cursor: pointer; border-radius: 8px; }
+  #lb .prev { left: 10px; } #lb .next { right: 356px; }
+  #lb .close { position: absolute; top: 10px; right: 356px; background: rgba(255,255,255,.08); border: 0; color: #fff; font-size: 20px; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; }
+  @media (max-width: 800px) {
+    #lb.open { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    #lb aside { border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; }
+    #lb .next { right: 10px; } #lb .close { right: 10px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Krea2 Gallery</h1>
+  <div class="chips" id="folders"></div>
+  <button class="chip" id="starFilter">★ お気に入りのみ</button>
+  <div class="spacer"></div>
+  <span class="muted" id="count"></span>
+  <span class="muted" id="updated"></span>
+</header>
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">画像がまだありません。WSL2 で <code>gen.sh</code> を実行すると自動で届きます。</div>
+</main>
+
+<div id="lb">
+  <div class="view"><img id="lbImg" alt=""></div>
+  <button class="nav prev" id="prev">‹</button>
+  <button class="nav next" id="next">›</button>
+  <button class="close" id="close">×</button>
+  <aside>
+    <h2 id="lbName"></h2>
+    <dl id="lbMeta"></dl>
+    <div class="btns">
+      <button id="lbStar">★ お気に入り</button>
+      <a class="btn" id="lbDl" download>原寸をダウンロード</a>
+      <button class="danger" id="lbDel">ゴミ箱へ</button>
+    </div>
+    <p class="muted" style="margin-top:14px">← → で前後、Esc で閉じる、S でお気に入り</p>
+  </aside>
+</div>
+
+<script>
+const state = { folder: null, star: false, items: [], folders: [], idx: -1, timer: null };
+const $ = (s) => document.querySelector(s);
+
+function fmtTime(t) {
+  const d = new Date(t * 1000);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function loraShort(m) {
+  if (!m || !m.lora) return "";
+  const b = String(m.lora).split("/").pop();
+  const mt = b.match(/-(\d{6})\.safetensors$/);
+  return mt ? `step ${parseInt(mt[1], 10)}` : b.replace(/\.safetensors$/, "");
+}
+
+async function load() {
+  const q = new URLSearchParams();
+  if (state.folder !== null) q.set("folder", state.folder);
+  if (state.star) q.set("star", "true");
+  const r = await fetch("/api/images?" + q);
+  const j = await r.json();
+  state.items = j.items; state.folders = j.folders;
+  renderFolders(); renderGrid();
+  $("#count").textContent = `${j.total} 枚`;
+  $("#updated").textContent = "更新 " + new Date().toLocaleTimeString("ja-JP");
+}
+
+function renderFolders() {
+  const el = $("#folders"); el.innerHTML = "";
+  const all = document.createElement("button");
+  all.className = "chip" + (state.folder === null ? " on" : "");
+  all.textContent = "すべて";
+  all.onclick = () => { state.folder = null; load(); };
+  el.appendChild(all);
+  for (const f of state.folders) {
+    const b = document.createElement("button");
+    b.className = "chip" + (state.folder === f ? " on" : "");
+    b.textContent = f || "(root)";
+    b.onclick = () => { state.folder = f; load(); };
+    el.appendChild(b);
+  }
+  $("#starFilter").className = "chip" + (state.star ? " on" : "");
+}
+
+function renderGrid() {
+  const g = $("#grid"); g.innerHTML = "";
+  $("#empty").style.display = state.items.length ? "none" : "block";
+  state.items.forEach((it, i) => {
+    const c = document.createElement("div"); c.className = "card";
+    const ls = loraShort(it.meta);
+    c.innerHTML = `
+      <img loading="lazy" src="/thumb/${encodeURI(it.path)}?v=${it.mtime}" alt="">
+      ${ls ? `<span class="lora">${ls}</span>` : ""}
+      <button class="star ${it.star ? "on" : ""}" title="お気に入り">★</button>
+      <div class="cap"><b title="${it.name}">${it.meta && it.meta.prompt ? it.meta.prompt : it.name}</b><span>${fmtTime(it.mtime)}</span></div>`;
+    c.querySelector("img").onclick = () => open(i);
+    c.querySelector(".cap").onclick = () => open(i);
+    c.querySelector(".star").onclick = (e) => { e.stopPropagation(); toggleStar(it); };
+    g.appendChild(c);
+  });
+}
+
+async function toggleStar(it) {
+  const r = await fetch("/api/star/" + encodeURI(it.path), { method: "POST" });
+  const j = await r.json();
+  it.star = j.star;
+  renderGrid();
+  if (state.idx >= 0) fillAside(state.items[state.idx]);
+}
+
+function open(i) {
+  state.idx = i;
+  const it = state.items[i];
+  $("#lbImg").src = "/img/" + encodeURI(it.path);
+  fillAside(it);
+  $("#lb").classList.add("open");
+}
+function fillAside(it) {
+  $("#lbName").textContent = (it.folder ? it.folder + "/" : "") + it.name;
+  const m = it.meta || {};
+  const rows = [
+    ["プロンプト", m.prompt],
+    ["LoRA", m.lora ? String(m.lora).split("/").pop() : ""],
+    ["LoRA 倍率", m.lora_multiplier],
+    ["seed", m.seed],
+    ["steps / guidance / mu", [m.steps, m.guidance_scale, m.mu].filter(v => v !== undefined).join(" / ")],
+    ["サイズ", it.w && it.h ? `${it.w} × ${it.h}` : ""],
+    ["モデル", m.dit ? String(m.dit).split("/").pop() : ""],
+    ["生成日時", fmtTime(it.mtime)],
+    ["ファイル", (it.size / 1024 / 1024).toFixed(2) + " MB"],
+  ];
+  const dl = $("#lbMeta"); dl.innerHTML = "";
+  for (const [k, v] of rows) {
+    if (v === undefined || v === null || v === "") continue;
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    dl.append(dt, dd);
+  }
+  $("#lbStar").className = it.star ? "on" : "";
+  $("#lbDl").href = "/img/" + encodeURI(it.path);
+  $("#lbDl").download = it.name;
+}
+function close() { $("#lb").classList.remove("open"); state.idx = -1; }
+function step(d) {
+  if (state.idx < 0) return;
+  const n = (state.idx + d + state.items.length) % state.items.length;
+  open(n);
+}
+async function del() {
+  if (state.idx < 0) return;
+  const it = state.items[state.idx];
+  const r = await fetch("/api/images/" + encodeURI(it.path), { method: "DELETE" });
+  if (r.ok) { close(); load(); }
+}
+
+$("#prev").onclick = () => step(-1);
+$("#next").onclick = () => step(1);
+$("#close").onclick = close;
+$("#lbStar").onclick = () => toggleStar(state.items[state.idx]);
+$("#lbDel").onclick = del;
+$("#starFilter").onclick = () => { state.star = !state.star; load(); };
+$("#lb .view").onclick = (e) => { if (e.target === e.currentTarget) close(); };
+document.addEventListener("keydown", (e) => {
+  if (!$("#lb").classList.contains("open")) return;
+  if (e.key === "ArrowLeft") step(-1);
+  else if (e.key === "ArrowRight") step(1);
+  else if (e.key === "Escape") close();
+  else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
+});
+
+load();
+setInterval(() => { if (state.idx < 0) load(); }, 20000);
+</script>
+</body>
+</html>

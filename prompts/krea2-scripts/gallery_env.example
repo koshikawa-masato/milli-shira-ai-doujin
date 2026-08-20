@@ -1,0 +1,3 @@
+# ~/krea2/.gallery_env に置く（WSL2 側）
+GALLERY_URL=http://100.69.125.56:8020
+GALLERY_TOKEN=change-me

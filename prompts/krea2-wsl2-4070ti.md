@@ -308,6 +308,25 @@ WSL2 の `~/krea2/scripts/` に同じものを置いてある。
 
 ---
 
+## 11. 画像確認用ギャラリー（Pi5）
+
+生成画像は Pi5 のコンテナ `krea2-gallery` で見る。ソースは `tools/krea2-gallery/`。
+
+- URL: http://100.69.125.56:8020/ （Tailscale 内）
+- `gen.sh` が生成直後に `/api/upload` へ POST する（WSL2 の `~/krea2/.gallery_env` に URL とトークン。雛形は `prompts/krea2-scripts/gallery_env.example`）
+- フォルダ = `gen.sh` の出力 dir 名。LoRA 付きは `step 1200` のようにバッジ表示
+- ★ でお気に入り、ゴミ箱は `data/trash/` へ移動するだけ
+- Pi5 → WSL2 / WSL2 → Pi5 の SSH は通っていないので rsync ではなく HTTP で送る
+
+デプロイ・更新（Pi5）:
+
+```bash
+rsync -a --exclude .env tools/krea2-gallery/ pi5:~/krea2-gallery/
+ssh pi5 'cd ~/krea2-gallery && docker compose up -d --build'
+```
+
+---
+
 ## こまったとき
 
 - `nvidia-smi` が出ない: Windows ドライバ更新、WSL 再起動

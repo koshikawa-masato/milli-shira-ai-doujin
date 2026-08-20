@@ -1,0 +1,10 @@
+services:
+  gallery:
+    build: .
+    container_name: krea2-gallery
+    restart: unless-stopped
+    ports:
+      - "8020:8020"
+    env_file: .env
+    volumes:
+      - ./data:/data
