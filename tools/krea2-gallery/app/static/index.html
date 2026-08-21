@@ -741,7 +741,7 @@ function renderGraph() {
     nodesEl.appendChild(el);
   }
 }
-function tip(ev, text) { if (TOUCH) return; const t = $("#gtip"); t.textContent = text; t.style.display = "block"; moveTip(ev); }
+function tip(ev, text) { /* ホバーのプロンプト表示は廃止（2026-08-21）。PC はクリックでライトボックス、iPhone はタップでシート */ }
 function openSheet(n) {
   const m = n.meta || {};
   const b = $("#sheetBody");
