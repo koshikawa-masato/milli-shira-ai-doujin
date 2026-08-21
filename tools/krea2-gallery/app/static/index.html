@@ -274,7 +274,7 @@
       <button id="gExpand">すべて展開</button><button id="gCollapse">束ねる</button>
       <button id="gZoomOut">−</button><span class="muted" id="gZoomLabel">100%</span><button id="gZoomIn">＋</button>
       <button id="gFit">最新へ</button>
-      <span class="muted">兄弟 6 枚以上・連鎖 6 件以上は 5 つずつ束ねます（クリックで開閉）。矢印の緑字 = 追加された語</span>
+      <span class="muted">兄弟 6 枚以上・連鎖 6 件以上は 5 つずつ束ねます（クリックで開閉）。矢印の緑字 = 追加された語。ドラッグで移動、⌘+ホイールで拡大縮小</span>
       <span class="legend"><span><i></i>派生（指定）</span><span><i class="inf"></i>派生（推定）</span><span><i class="dash" style="border-color:var(--c-train)"></i>LoRA</span><span><i class="dash" style="border-color:var(--c-dataset)"></i>素材化</span></span>
     </div>
     <div id="gcanvas"><svg id="gsvg"></svg><div id="gnodes"></div></div>
@@ -776,7 +776,7 @@ document.addEventListener("touchstart", hideTip, { passive: true });
 document.addEventListener("scroll", hideTip, { passive: true, capture: true });
 $("#gExpand").onclick = gExpandAll;
 $("#gCollapse").onclick = () => { state.gExp = new Map(); localStorage.removeItem("gExp"); renderGraph(); };
-$("#gZoomIn").onclick = () => { state.gZoom = Math.min(2, state.gZoom + 0.1); renderGraph(); };
+$("#gZoomIn").onclick = () => { state.gZoom = Math.min(2.5, state.gZoom + 0.1); renderGraph(); };
 $("#gZoomOut").onclick = () => { state.gZoom = Math.max(0.3, state.gZoom - 0.1); renderGraph(); };
 $("#gFit").onclick = () => { const els = [...document.querySelectorAll("#gnodes .gn.gen")].sort((a, b) => parseFloat(b.style.left) - parseFloat(a.style.left)); if (els[0]) els[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); };
 $("#tabGraph").onclick = () => setView("graph");
@@ -801,6 +801,19 @@ $("#tabGraph").onclick = () => setView("graph");
     if (moved) { setTimeout(() => g.classList.remove("dragging"), 0); }
   });
   g.addEventListener("dragstart", (e) => e.preventDefault()); // サムネ画像のネイティブドラッグを抑止
+  // Command(⌘)+ホイール / Ctrl+ホイール / トラックパッドのピンチ でカーソル位置を中心にズーム
+  g.addEventListener("wheel", (e) => {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    e.preventDefault();
+    const cv = $("#gcanvas"), r = cv.getBoundingClientRect();
+    const old = state.gZoom;
+    const factor = Math.exp(-e.deltaY * (e.ctrlKey && !e.metaKey ? 0.01 : 0.002)); // ピンチは deltaY が小さいので係数を変える
+    const nz = Math.min(2.5, Math.max(0.3, old * factor));
+    if (nz === old) return;
+    const cx = (e.clientX - r.left) / old, cy = (e.clientY - r.top) / old; // カーソル下のキャンバス座標
+    state.gZoom = nz; renderGraph();
+    sc.scrollLeft += cx * (nz - old); sc.scrollTop += cy * (nz - old);
+  }, { passive: false });
 })();
 
 /* ---------- parent picker ---------- */
