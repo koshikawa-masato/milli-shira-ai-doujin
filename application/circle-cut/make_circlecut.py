@@ -14,7 +14,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-CIRCLE = "くろぱんた団"
+CIRCLE = "くろぱんだ団"
 TITLE_LINES = ["ミリしらが AI で", "同人誌を作ってみた。"]
 SUB = "Krea 2 LoRA で作るオリジナルキャラ本"
 
