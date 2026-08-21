@@ -72,7 +72,9 @@
   .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
   /* graph */
-  #graph { position: relative; }
+  #graph { position: relative; cursor: grab; user-select: none; }
+  #graph.dragging { cursor: grabbing; }
+  #graph.dragging .gn { pointer-events: none; }
   #gtools { position: sticky; left: 0; }
   #gtools { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
   #gtools button { border: 1px solid var(--line); background: transparent; color: var(--fg); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
@@ -778,6 +780,28 @@ $("#gZoomIn").onclick = () => { state.gZoom = Math.min(2, state.gZoom + 0.1); re
 $("#gZoomOut").onclick = () => { state.gZoom = Math.max(0.3, state.gZoom - 0.1); renderGraph(); };
 $("#gFit").onclick = () => { const els = [...document.querySelectorAll("#gnodes .gn.gen")].sort((a, b) => parseFloat(b.style.left) - parseFloat(a.style.left)); if (els[0]) els[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); };
 $("#tabGraph").onclick = () => setView("graph");
+(() => { // PC: ドラッグで系統図をパン（スクロール領域は main）
+  const g = $("#graph"), sc = document.querySelector("main");
+  let down = null, moved = false;
+  g.addEventListener("mousedown", (e) => {
+    if (e.button !== 0 || e.target.closest("#gtools, button, input, a")) return;
+    down = { x: e.clientX, y: e.clientY, sl: sc.scrollLeft, st: sc.scrollTop }; moved = false;
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!down) return;
+    const dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (!moved && Math.hypot(dx, dy) < 5) return;
+    if (!moved) { moved = true; g.classList.add("dragging"); }
+    sc.scrollLeft = down.sl - dx; sc.scrollTop = down.st - dy;
+    e.preventDefault();
+  });
+  window.addEventListener("mouseup", () => {
+    if (!down) return;
+    down = null;
+    if (moved) { setTimeout(() => g.classList.remove("dragging"), 0); }
+  });
+  g.addEventListener("dragstart", (e) => e.preventDefault()); // サムネ画像のネイティブドラッグを抑止
+})();
 
 /* ---------- parent picker ---------- */
 function parentOf(path) {
