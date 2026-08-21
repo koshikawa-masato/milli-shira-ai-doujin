@@ -23,7 +23,22 @@
 - 同じ seed で裏地や表情の記述だけ変えると、構図が揃った差分が取れる（比較に最適）
 - ただし seed 固定だと**表情が弱くなる**。表情を出したいときは seed を変えるか、表情の記述を文頭に置く
 
-## 基本プロンプト v2（2026-08-21〜。`{lining}` `{pose}` を差し替える）
+## 正式プロンプト（2026-08-21 確定。**文面は固定、末尾の `{pose}` 一文だけ差し替える**）
+
+基準画像 `candidates/20260821-092837-966_0.png` を出したプロンプトそのもの。「下手に小細工せずパターンを増やす」方針。
+
+```
+A Japanese girl with black bob hair and dark brown eyes, wearing a black animal-ear hoodie.
+The hood is black with two round white ears on top, and the front of the hood has two white circular patches around the eye area.
+The inside lining of the hood is a traditional Japanese hanafuda card pattern: red and orange maple leaves with a brown deer.
+The hoodie body is black with a white kangaroo pocket. {pose}
+```
+
+`{pose}` の例: `Waving one hand, big happy open-mouth smile, upper body, classroom background.`（基準画像）
+
+紐・縁の裏地・ステッチ・白ハイライトは**プロンプトで指定せず**、素材の選別（基準画像に近いものを選ぶ）と LoRA に委ねる。
+
+## （不採用）基本プロンプト v2 案（2026-08-21。仕様を全部書き込んだ版。使わない）
 
 ```
 Anime style illustration with clean lineart and flat colors.
@@ -95,4 +110,5 @@ The inside lining of the hood is bright crimson red.
 - 2026-08-20 喜怒哀楽 4 枚: 柄は 4 つとも成立、表情は seed 固定のため弱い
 - 2026-08-21 花札 12 か月シリーズ `hanafuda` フォルダ → **10月 紅葉に鹿を正式裏地に採用**
 - 2026-08-21 素材候補 20 枚 `candidates`: seed 1–8 で顔が安定することを確認。公園ベンチ指定は実写化した（画風アンカーが必要）。紐の有無が半々 → 紐ありに統一
-- 2026-08-21 `candidates_v2`: v2 プロンプト（紐・縁の裏地・ステッチ・白ハイライト・画風アンカー）で作り直し
+- 2026-08-21 `candidates_v2`: 仕様を全部書いた v2 プロンプトで途中まで生成 → **不採用**（小細工せずパターンを増やす方針に変更）
+- 2026-08-21 `patterns`: 正式プロンプト固定で `{pose}` 15 種 × 2 seed
