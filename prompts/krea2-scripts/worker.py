@@ -146,6 +146,8 @@ def build_cmd(job: dict) -> tuple[list[str], dict]:
         lora = str(p.get("lora") or "")
         if lora and not Path(lora).exists():
             raise FileNotFoundError(f"LoRA not found: {lora}")
+        if p.get("lora_multiplier") not in (None, ""):
+            env["LORA_MULTIPLIER"] = str(float(p["lora_multiplier"]))
         # 複数枚は seed を +1 ずつ
         parts = " && ".join(
             f'{SCRIPTS}/gen.sh "$PROMPT" {seed0 + i} "$LORA" "$OUT"' for i in range(count))

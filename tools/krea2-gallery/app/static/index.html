@@ -320,6 +320,7 @@
         <label class="wide">プロンプト<textarea name="prompt" required placeholder="kuropanda, 1girl, black panda hoodie, ..."></textarea></label>
         <label>seed<input name="seed" type="number" value="0" inputmode="numeric"></label>
         <label>LoRA<select name="lora"><option value="">なし（ベース）</option></select></label>
+        <label>LoRA 倍率<input name="lora_multiplier" type="number" step="0.1" min="0" max="2" value="1.0" inputmode="decimal"></label>
         <label>出力フォルダ<input name="folder" value="test" placeholder="test"></label>
         <label>枚数（seed を +1 ずつ）<input name="count" type="number" value="1" min="1" max="8" inputmode="numeric"></label>
         <label class="wide">派生元（任意・ギャラリー上のパス）<input name="parent" placeholder="test/2026....png"></label>
@@ -1078,7 +1079,7 @@ document.querySelectorAll(".optabs button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".optabs button").forEach(x => x.className = x === b ? "on" : "");
   for (const f of ["gen", "train", "compare", "note"]) document.getElementById("f" + f[0].toUpperCase() + f.slice(1)).style.display = f === b.dataset.f ? "" : "none";
 });
-$("#fGen").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; d.count = +d.count || 1; const note = d.note; delete d.note; if (await postJob("gen", d, note)) e.target.querySelector("[name=note]").value = ""; };
+$("#fGen").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; d.count = +d.count || 1; if (!d.lora) delete d.lora_multiplier; const note = d.note; delete d.note; if (await postJob("gen", d, note)) e.target.querySelector("[name=note]").value = ""; };
 $("#fTrain").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); const note = d.note; delete d.note; for (const k of ["steps", "save_every", "dim", "swap", "compare_seed"]) d[k] = +d[k]; await postJob("train", d, note); };
 $("#fCompare").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; const note = d.note; delete d.note; await postJob("compare", d, note); };
 $("#fNote").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); await addNote(d.text, null); e.target.reset(); toast("メモを残しました"); };
@@ -1131,7 +1132,7 @@ function fillAside(it) {
     ["出所", m.source],
     ["メモ", m.note],
     ["LoRA", loraShort(m)],
-    ["LoRA 倍率", m.lora_multiplier],
+    ["LoRA 倍率", m.lora_multiplier !== 1 ? m.lora_multiplier : undefined],
     ["seed", m.seed],
     ["steps / guidance / mu", [m.steps, m.guidance_scale, m.mu].filter(v => v !== undefined).join(" / ")],
     ["サイズ", it.w && it.h ? `${it.w} × ${it.h}` : ""],
