@@ -16,13 +16,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 CIRCLE = "くろぱんだ団"
 TITLE_LINES = ["ミリしらが AI で", "同人誌を作ってみた。"]
-SUB = "Krea 2 LoRA で作るオリジナルキャラ本"
 
-# テンプレート実測（635×903）: 外枠内側 22..612 × 22..880、小枠 22..163 × 22..164、
-# 小枠の右側の帯 182..612 × 22..180、本体 22..612 × 182..880
-MAIN = (22, 182, 612, 880)
+# テンプレート実測（635×903）: 外枠内側 22..612 × 22..880、小枠（スペース番号欄）22..163 × 22..164、
+# 小枠の右側の帯 182..612 × 22..180。絵は外枠内側いっぱいに敷き、小枠と L 字の黒帯はテンプレートから戻す
+FULL = (22, 22, 612, 880)
 STRIP = (182, 22, 612, 180)
+CORNER = (0, 0, 182, 182)
 S = 2  # 作業倍率
+STROKE = 7  # 文字の白縁取り（1倍時の px）
 
 
 def font(size: int, weight: str = "W8") -> ImageFont.FreeTypeFont:
@@ -60,17 +61,13 @@ def main() -> None:
     canvas = tpl.resize((W * S, H * S), Image.NEAREST)
     d = ImageDraw.Draw(canvas)
 
-    # ---- 本体: 画像 + 下部のタイトル帯 ----
-    mx0, my0, mx1, my1 = [v * S for v in MAIN]
-    band_h = 150 * S
-    img_box = (mx0, my0, mx1, my1 - band_h)
-    bw, bh = img_box[2] - img_box[0], img_box[3] - img_box[1]
-
+    # ---- 絵を外枠内側いっぱいに敷く ----
+    fx0, fy0, fx1, fy1 = [v * S for v in FULL]
+    bw, bh = fx1 - fx0, fy1 - fy0
     src = Image.open(a.image).convert("RGB")
     if a.crop:
         x0, y0, x1, y1 = [int(v) for v in a.crop.split(",")]
         src = src.crop((x0, y0, x1, y1))
-    # 枠の縦横比に合わせて中央（やや上寄り）で切り出す
     ratio = bw / bh
     sw, sh = src.size
     if sw / sh > ratio:
@@ -81,32 +78,28 @@ def main() -> None:
         nh = int(sw / ratio)
         y0 = max(0, int((sh - nh) * 0.15))
         src = src.crop((0, y0, sw, y0 + nh))
-    src = src.resize((bw, bh), Image.LANCZOS)
-    canvas.paste(src, (img_box[0], img_box[1]))
+    canvas.paste(src.resize((bw, bh), Image.LANCZOS), (fx0, fy0))
+    # 小枠（スペース番号欄）と L 字の黒帯をテンプレートから戻す
+    cx0, cy0, cx1, cy1 = [v * S for v in CORNER]
+    canvas.paste(tpl.resize((W * S, H * S), Image.NEAREST).crop((cx0, cy0, cx1, cy1)), (cx0, cy0))
 
-    # タイトル帯（白地、上に細い黒線）
-    d.rectangle((mx0, my1 - band_h, mx1, my1), fill="white")
-    d.rectangle((mx0, my1 - band_h, mx1, my1 - band_h + 4 * S), fill="black")
-    f_title = fit_font(d, max(TITLE_LINES, key=len), (mx1 - mx0) - 24 * S, 54 * S)
-    lh = f_title.size + 6 * S
-    ty = my1 - band_h + (band_h - lh * len(TITLE_LINES)) // 2 + 2 * S
+    def outlined(text, xy, f):
+        d.text(xy, text, font=f, fill="black", stroke_width=STROKE * S, stroke_fill="white")
+
+    # ---- サークル名（右上の帯の位置、絵の上に白縁取りで） ----
+    sx0, sy0, sx1, sy1 = [v * S for v in STRIP]
+    f_circle = fit_font(d, CIRCLE, (sx1 - sx0) - 2 * (12 + STROKE) * S, 66 * S)
+    cw = d.textlength(CIRCLE, font=f_circle)
+    outlined(CIRCLE, ((sx0 + sx1 - cw) / 2, sy0 + ((sy1 - sy0) - f_circle.size) // 2 - 6 * S), f_circle)
+
+    # ---- タイトル（下部、2 行、白縁取り） ----
+    f_title = fit_font(d, max(TITLE_LINES, key=len), (fx1 - fx0) - 2 * (12 + STROKE) * S, 54 * S)
+    lh = f_title.size + 10 * S
+    ty = fy1 - lh * len(TITLE_LINES) - 18 * S
     for line in TITLE_LINES:
         tw = d.textlength(line, font=f_title)
-        d.text(((mx0 + mx1 - tw) / 2, ty), line, font=f_title, fill="black")
+        outlined(line, ((fx0 + fx1 - tw) / 2, ty), f_title)
         ty += lh
-
-    # ---- 上の帯: サークル名 ----
-    sx0, sy0, sx1, sy1 = [v * S for v in STRIP]
-    d.rectangle((sx0, sy0, sx1, sy1), fill="white")
-    f_circle = fit_font(d, CIRCLE, (sx1 - sx0) - 24 * S, 66 * S)
-    f_sub = fit_font(d, SUB, (sx1 - sx0) - 24 * S, 20 * S, weight="W6", min_size=14 * S)
-    ch = f_circle.size
-    total = ch + 8 * S + f_sub.size
-    cy = sy0 + ((sy1 - sy0) - total) // 2 - 4 * S
-    cw = d.textlength(CIRCLE, font=f_circle)
-    d.text(((sx0 + sx1 - cw) / 2, cy), CIRCLE, font=f_circle, fill="black")
-    sw2 = d.textlength(SUB, font=f_sub)
-    d.text(((sx0 + sx1 - sw2) / 2, cy + ch + 10 * S), SUB, font=f_sub, fill="#222222")
 
     out = canvas.resize((W, H), Image.LANCZOS)
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
