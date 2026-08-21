@@ -5,8 +5,15 @@
 
 ## キャラ仕様（固定する要素）
 
+基準画像: `candidates/20260821-092837-966_0.png`（手を振る、教室。2026-08-21 に ★ 採用）
+
 - 黒髪ボブ、黒〜こげ茶の目の日本人少女
 - **白黒反転パンダのパーカー**: 黒いフード、フード頭頂部に白い丸耳 2 つ、フード前面（額の上）に白い丸い「目の縁」2 つ、本体は黒、カンガルーポケットは白
+- **白い紐あり**
+- **フードの縁は裏地の柄が幅広く見える**（黒一色だと見づらい）
+- **白ポケットの縁に黒糸のステッチ**
+- **服の皺は細い白ハイライト線**で描く
+- 画風: アニメ塗り・クリーンな線画（背景指定で実写に振れるので、必ずプロンプト冒頭で画風を固定する）
 - **フードの裏地は可変**: 感情（喜怒哀楽）や月（花札 12 か月）で色・柄が変わる。これがこの子の"表現"
 
 ## 生成のコツ（Krea 2 Turbo）
@@ -16,7 +23,21 @@
 - 同じ seed で裏地や表情の記述だけ変えると、構図が揃った差分が取れる（比較に最適）
 - ただし seed 固定だと**表情が弱くなる**。表情を出したいときは seed を変えるか、表情の記述を文頭に置く
 
-## 基本プロンプト（これを土台に `{lining}` `{face}` を差し替える）
+## 基本プロンプト v2（2026-08-21〜。`{lining}` `{pose}` を差し替える）
+
+```
+Anime style illustration with clean lineart and flat colors.
+A Japanese girl with black bob hair and dark brown eyes, wearing a black animal-ear hoodie with white drawstrings.
+The hood is black with two round white ears on top, and the front of the hood has two white circular patches around the eye area.
+{lining} The patterned lining is clearly visible along the wide rolled edge of the hood framing her face.
+The hoodie body is black with a white kangaroo pocket that has visible black stitching along its edges.
+Soft fabric wrinkles are drawn with thin white highlight lines on the black fabric.
+{pose}
+```
+
+標準の裏地（正式）: `The inside lining of the hood is a traditional Japanese hanafuda card pattern: red and orange maple leaves with a brown deer.`（10月 紅葉に鹿）
+
+旧 v1（2026-08-20。"panda" 回避・裏地可変の検証に使用）:
 
 ```
 A Japanese girl with black bob hair and dark brown eyes, wearing a black animal-ear hoodie.
@@ -72,4 +93,6 @@ The inside lining of the hood is bright crimson red.
 - 2026-08-20 `inverted` seed 0: 反転配色が一発で成立（"panda" 回避が効いた）
 - 2026-08-20 裏地 3 色比較（赤 / 竹緑 / 桜ピンク）→ 赤が最も視認性が高い
 - 2026-08-20 喜怒哀楽 4 枚: 柄は 4 つとも成立、表情は seed 固定のため弱い
-- 2026-08-21 花札 12 か月シリーズ `hanafuda` フォルダ
+- 2026-08-21 花札 12 か月シリーズ `hanafuda` フォルダ → **10月 紅葉に鹿を正式裏地に採用**
+- 2026-08-21 素材候補 20 枚 `candidates`: seed 1–8 で顔が安定することを確認。公園ベンチ指定は実写化した（画風アンカーが必要）。紐の有無が半々 → 紐ありに統一
+- 2026-08-21 `candidates_v2`: v2 プロンプト（紐・縁の裏地・ステッチ・白ハイライト・画風アンカー）で作り直し
