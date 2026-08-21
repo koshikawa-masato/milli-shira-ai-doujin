@@ -112,3 +112,6 @@ The inside lining of the hood is bright crimson red.
 - 2026-08-21 素材候補 20 枚 `candidates`: seed 1–8 で顔が安定することを確認。公園ベンチ指定は実写化した（画風アンカーが必要）。紐の有無が半々 → 紐ありに統一
 - 2026-08-21 `candidates_v2`: 仕様を全部書いた v2 プロンプトで途中まで生成 → **不採用**（小細工せずパターンを増やす方針に変更）
 - 2026-08-21 `patterns`: 正式プロンプト固定で `{pose}` 15 種 × 2 seed
+- 2026-08-21 **kuropanda_v1 学習**: 素材 29 枚（基準 + patterns 28）、1800 step / dim 32 / lr 1e-4 / swap 16、185 分（6.1 s/it）、VRAM 12GB。loss 0.12 → 0.06。保存名は `kuropanda_v1-step00000300.safetensors` 形式
+  - 同プロンプト比較: 300 で既に安定、1800 でも過学習の兆候なし。LoRA 版はフード縁の裏地が広く、耳の内側ピンク、**紐が消える**（キャプション未記載のため平均化）→ 生成時は `white drawstrings` を書くか、v2 でキャプションに入れる
+  - 暫定採用候補 900 / 1200。トリガー語のみ・汎化テストは `trigger_test` フォルダ
