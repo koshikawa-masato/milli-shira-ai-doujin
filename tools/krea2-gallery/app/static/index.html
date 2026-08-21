@@ -72,7 +72,7 @@
   .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
   /* graph */
-  #graph { position: relative; cursor: grab; user-select: none; }
+  #graph { position: relative; cursor: grab; user-select: none; touch-action: pan-x pan-y; } /* ブラウザのピンチは止め、1 本指のスクロールは残す */
   #graph.dragging { cursor: grabbing; }
   #graph.dragging .gn { pointer-events: none; }
   #gtools { position: sticky; left: 0; }
@@ -274,7 +274,7 @@
       <button id="gExpand">すべて展開</button><button id="gCollapse">束ねる</button>
       <button id="gZoomOut">−</button><span class="muted" id="gZoomLabel">100%</span><button id="gZoomIn">＋</button>
       <button id="gFit">最新へ</button>
-      <span class="muted">兄弟 6 枚以上・連鎖 6 件以上は 5 つずつ束ねます（クリックで開閉）。矢印の緑字 = 追加された語。ドラッグで移動、⌘+ホイールで拡大縮小</span>
+      <span class="muted">兄弟 6 枚以上・連鎖 6 件以上は 5 つずつ束ねます（クリックで開閉）。矢印の緑字 = 追加された語。ドラッグで移動、⌘+ホイール / ピンチで拡大縮小</span>
       <span class="legend"><span><i></i>派生（指定）</span><span><i class="inf"></i>派生（推定）</span><span><i class="dash" style="border-color:var(--c-train)"></i>LoRA</span><span><i class="dash" style="border-color:var(--c-dataset)"></i>素材化</span></span>
     </div>
     <div id="gcanvas"><svg id="gsvg"></svg><div id="gnodes"></div></div>
@@ -814,6 +814,34 @@ $("#tabGraph").onclick = () => setView("graph");
     state.gZoom = nz; renderGraph();
     sc.scrollLeft += cx * (nz - old); sc.scrollTop += cy * (nz - old);
   }, { passive: false });
+  // iPhone: 2 本指ピンチでズーム（中点を中心に）。ピンチ中は CSS 変形だけ、離したら確定描画
+  let pinch = null;
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const mid = (t) => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+  g.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 2) return;
+    const cv = $("#gcanvas"), r = cv.getBoundingClientRect(), m = mid(e.touches);
+    pinch = { d0: dist(e.touches), z0: state.gZoom, cx: (m.x - r.left) / state.gZoom, cy: (m.y - r.top) / state.gZoom, sl: sc.scrollLeft, st: sc.scrollTop, m0: m, z: state.gZoom };
+  }, { passive: true });
+  g.addEventListener("touchmove", (e) => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const m = mid(e.touches);
+    const nz = Math.min(2.5, Math.max(0.3, pinch.z0 * dist(e.touches) / pinch.d0));
+    pinch.z = nz;
+    $("#gcanvas").style.transform = `scale(${nz})`;
+    // 中点の下にあったキャンバス座標が指の中点に留まるようにスクロール（指の移動ぶんも追従）
+    sc.scrollLeft = pinch.sl + pinch.cx * (nz - pinch.z0) - (m.x - pinch.m0.x);
+    sc.scrollTop = pinch.st + pinch.cy * (nz - pinch.z0) - (m.y - pinch.m0.y);
+  }, { passive: false });
+  const endPinch = (e) => {
+    if (!pinch) return;
+    if (e.touches.length >= 2) return;
+    const z = pinch.z; pinch = null;
+    if (z !== state.gZoom) { const sl = sc.scrollLeft, st = sc.scrollTop; state.gZoom = z; renderGraph(); sc.scrollLeft = sl; sc.scrollTop = st; }
+  };
+  g.addEventListener("touchend", endPinch, { passive: true });
+  g.addEventListener("touchcancel", endPinch, { passive: true });
 })();
 
 /* ---------- parent picker ---------- */
