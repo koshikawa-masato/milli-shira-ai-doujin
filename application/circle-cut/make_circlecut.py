@@ -54,6 +54,8 @@ def main() -> None:
     ap.add_argument("image")
     ap.add_argument("out")
     ap.add_argument("--crop", help="元画像の切り出し x0,y0,x1,y1（省略時は上半身を自動）")
+    ap.add_argument("--fit", action="store_true", help="切り抜かず幅に合わせて全体を収める（白背景の絵向け）。上下は白で埋める")
+    ap.add_argument("--yshift", type=float, default=0.0, help="--fit 時の上下位置。0 で中央、-1 で上端、1 で下端")
     a = ap.parse_args()
 
     tpl = Image.open(a.template).convert("RGB")
@@ -70,7 +72,17 @@ def main() -> None:
         src = src.crop((x0, y0, x1, y1))
     ratio = bw / bh
     sw, sh = src.size
-    if sw / sh > ratio:
+    if a.fit:
+        # 幅に合わせて縮小し、余白は絵の背景色（四隅の平均）で埋める
+        nh = int(sh * bw / sw)
+        fitted = src.resize((bw, nh), Image.LANCZOS)
+        corners = [src.getpixel((0, 0)), src.getpixel((sw - 1, 0)), src.getpixel((0, sh - 1)), src.getpixel((sw - 1, sh - 1))]
+        bg = tuple(sum(c[i] for c in corners) // 4 for i in range(3))
+        back = Image.new("RGB", (bw, bh), bg)
+        oy = (bh - nh) // 2 + int((bh - nh) // 2 * a.yshift)
+        back.paste(fitted, (0, oy))
+        src = back
+    elif sw / sh > ratio:
         nw = int(sh * ratio)
         x0 = (sw - nw) // 2
         src = src.crop((x0, 0, x0 + nw, sh))
@@ -78,7 +90,7 @@ def main() -> None:
         nh = int(sw / ratio)
         y0 = max(0, int((sh - nh) * 0.15))
         src = src.crop((0, y0, sw, y0 + nh))
-    canvas.paste(src.resize((bw, bh), Image.LANCZOS), (fx0, fy0))
+    canvas.paste(src if src.size == (bw, bh) else src.resize((bw, bh), Image.LANCZOS), (fx0, fy0))
     # 小枠（スペース番号欄）と L 字の黒帯をテンプレートから戻す
     cx0, cy0, cx1, cy1 = [v * S for v in CORNER]
     canvas.paste(tpl.resize((W * S, H * S), Image.NEAREST).crop((cx0, cy0, cx1, cy1)), (cx0, cy0))
