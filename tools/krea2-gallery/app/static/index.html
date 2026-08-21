@@ -71,6 +71,23 @@
   .notebox { display: flex; gap: 8px; margin: 0 auto 10px; max-width: 1100px; }
   .notebox input { flex: 1; background: var(--panel); border: 1px solid var(--line); color: var(--fg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
   .notebox button { border: 1px solid var(--c-note); background: transparent; color: var(--c-note); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+  /* graph: 系統一覧（カード） */
+  #glist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; max-width: 1200px; }
+  .lc { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; }
+  .lc:hover { border-color: var(--fg); }
+  .lc .th { position: relative; aspect-ratio: 4 / 3; background: #000; }
+  .lc .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lc .th .n { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.65); color: #fff; font-size: 12px; border-radius: 6px; padding: 2px 8px; }
+  .lc .th .k { position: absolute; left: 6px; top: 6px; font-size: 11px; border-radius: 6px; padding: 2px 7px; color: #000; background: var(--c-gen); }
+  .lc .th .k.ds { background: var(--c-dataset); } .lc .th .k.lora { background: var(--c-train); color: #fff; }
+  .lc .b { padding: 8px 10px; font-size: 12px; color: var(--muted); }
+  .lc .b b { color: var(--fg); font-size: 13px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lc .b .from { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #gcrumb { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 13px; margin-bottom: 8px; }
+  #gcrumb a { color: var(--accent); cursor: pointer; }
+  #gcrumb span.sep { color: var(--muted); }
+  .gn.ctx { opacity: .55; border-style: dashed; }
+  @media (max-width: 700px) { #glist { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
   /* graph */
   #graph { position: relative; cursor: grab; user-select: none; touch-action: pan-x pan-y; } /* ブラウザのピンチは止め、1 本指のスクロールは残す */
   #graph.dragging { cursor: grabbing; }
@@ -270,7 +287,10 @@
 </header>
 <main>
   <div id="graph" style="display:none">
+    <div id="gcrumb"></div>
+    <div id="glist"></div>
     <div id="gtools">
+      <button id="gSecondary">点線を表示</button>
       <button id="gExpand">すべて展開</button><button id="gCollapse">束ねる</button>
       <button id="gZoomOut">−</button><span class="muted" id="gZoomLabel">100%</span><button id="gZoomIn">＋</button>
       <button id="gFit">最新へ</button>
@@ -360,6 +380,7 @@
     <h2 id="lbName"></h2>
     <dl id="lbMeta"></dl>
     <div class="btns">
+      <button id="lbLineage">この画像の系統を開く</button>
       <button id="lbDerive">この画像から派生生成</button>
       <button id="lbCopy">プロンプトをコピー</button>
       <button id="lbStar">★ お気に入り</button>
@@ -396,7 +417,8 @@ const EV = {
   note:        { label: "メモ",   color: "var(--c-note)" },
   trash:       { label: "ゴミ箱", color: "var(--c-trash)" },
 };
-const state = { view: "graph", folder: null, graph: null, gExp: new Map(JSON.parse(localStorage.getItem("gExp") || "[]")), gZoom: matchMedia("(max-width: 700px)").matches ? 0.6 : 1, gHighlight: null, gScrolled: false, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
+const state = { view: "graph", folder: null, graph: null, gExp: new Map(JSON.parse(localStorage.getItem("gExp") || "[]")), gZoom: matchMedia("(max-width: 700px)").matches ? 0.6 : 1, gHighlight: null, gScrolled: false,
+                gMode: "list", gFolder: null, gFocus: null, gSecondary: false, star: false, q: "", evOn: new Set(["gen", "dataset", "train_start", "train_end", "note"]),
                 items: [], folders: [], hist: [], idx: -1 };
 const $ = (s) => document.querySelector(s);
 const TOUCH = matchMedia("(hover: none)").matches;
@@ -489,7 +511,7 @@ async function loadHist() {
 
 function renderFolders() {
   const el = $("#folders"); el.innerHTML = "";
-  const mk = (label, val) => { const b = document.createElement("button"); b.className = "chip" + (state.folder === val ? " on" : ""); b.textContent = label; b.onclick = () => { state.folder = val; load(); }; el.appendChild(b); };
+  const mk = (label, val) => { const b = document.createElement("button"); b.className = "chip" + (state.folder === val ? " on" : ""); b.textContent = label; b.onclick = () => { if (state.view === "graph") { val === null ? setGraphMode("list") : setGraphMode("folder", val); } else { state.folder = val; load(); } }; el.appendChild(b); };
   mk("すべて", null);
   for (const f of state.folders) mk(f || "(root)", f);
   $("#starFilter").className = "chip" + (state.star ? " on" : "");
@@ -605,21 +627,104 @@ function tsOf(n) { return typeof n.ts === "number" ? n.ts : (n.ts ? Date.parse(n
 async function loadGraph() {
   const r = await fetch("/api/graph"); state.graph = await r.json();
   state.folders = [...new Set(state.graph.nodes.filter(n => n.path).map(n => n.folder))].sort();
-  renderFolders(); renderGraph();
-  if (!state.gScrolled) { state.gScrolled = true; setTimeout(() => $("#gFit").click(), 50); }
+  renderFolders(); renderGraphView();
   const n = state.graph.nodes.filter(n => n.path).length;
   $("#count").textContent = `${n} 枚`;
   $("#updated").textContent = "更新 " + new Date().toLocaleTimeString("ja-JP");
 }
 
+/* 系統 = フォルダ。一覧 → フォルダのツリー → 画像のフォーカス の 3 段 */
+function setGraphMode(mode, arg) {
+  state.gMode = mode; state.gFolder = mode === "folder" ? arg : null; state.gFocus = mode === "focus" ? arg : null;
+  if (mode !== "focus") state.gHighlight = null;
+  state.folder = mode === "folder" ? arg : null;
+  location.hash = mode === "list" ? "" : mode === "folder" ? "#graph:" + encodeURIComponent(arg) : "#focus:" + encodeURIComponent(arg);
+  renderFolders(); renderGraphView();
+  document.querySelector("main").scrollTop = 0; document.querySelector("main").scrollLeft = 0;
+}
+function folderStats() {
+  const G = state.graph; const byId = new Map(G.nodes.map(n => [n.id, n]));
+  const st = new Map();
+  for (const n of G.nodes) {
+    if (!n.path) continue;
+    const f = n.folder || "";
+    if (!st.has(f)) st.set(f, { folder: f, count: 0, stars: 0, latest: 0, rep: null, repStar: false, from: new Map(), lora: 0, ds: n.type === "dataset" });
+    const o = st.get(f); o.count++; if (n.star) o.stars++;
+    if (n.meta && (n.meta.lora || n.meta.run)) o.lora++;
+    if (!o.rep || (n.star && !o.repStar) || (n.star === o.repStar && tsOf(n) > tsOf(o.rep))) { o.rep = n; o.repStar = !!n.star; }
+    o.latest = Math.max(o.latest, tsOf(n));
+    const p = byId.get(n.parent);
+    if (p) { const key = p.path ? (p.folder || "(root)") : (p.type === "run" ? "LoRA " + p.run : p.label); if (key !== f) o.from.set(key, (o.from.get(key) || 0) + 1); }
+  }
+  return [...st.values()].sort((a, b) => b.latest - a.latest);
+}
+function renderGraphView() {
+  const list = state.gMode === "list";
+  $("#glist").style.display = list ? "" : "none";
+  $("#gtools").style.display = list ? "none" : "";
+  $("#gcanvas").style.display = list ? "none" : "";
+  renderCrumb();
+  if (list) renderLineageList(); else renderGraph();
+}
+function renderCrumb() {
+  const c = $("#gcrumb"); c.innerHTML = "";
+  const add = (label, fn) => { if (fn) { const a = document.createElement("a"); a.textContent = label; a.onclick = fn; c.appendChild(a); } else { const b = document.createElement("b"); b.textContent = label; c.appendChild(b); } };
+  const sep = () => { const x = document.createElement("span"); x.className = "sep"; x.textContent = "›"; c.appendChild(x); };
+  if (state.gMode === "list") { add("系統一覧"); return; }
+  add("系統一覧", () => setGraphMode("list"));
+  if (state.gMode === "folder") {
+    // 派生元フォルダの連鎖をたどる
+    const chain = []; let f = state.gFolder; const seen = new Set();
+    while (f !== null && !seen.has(f)) { seen.add(f); const o = folderStats().find(x => x.folder === f); const from = o && [...o.from.entries()].sort((a, b) => b[1] - a[1])[0]; chain.unshift(f); f = from && state.folders.includes(from[0] === "(root)" ? "" : from[0]) ? (from[0] === "(root)" ? "" : from[0]) : null; }
+    chain.forEach((x, i) => { sep(); if (i === chain.length - 1) add(x || "(root)"); else add(x || "(root)", () => setGraphMode("folder", x)); });
+  } else {
+    const n = state.graph.nodes.find(x => x.path === state.gFocus);
+    if (n) { sep(); add(n.folder || "(root)", () => setGraphMode("folder", n.folder || "")); }
+    sep(); add("フォーカス: " + (state.gFocus || "").split("/").pop());
+  }
+}
+function renderLineageList() {
+  const el = $("#glist"); el.innerHTML = "";
+  const stats = folderStats();
+  $("#empty").style.display = stats.length ? "none" : "block";
+  for (const o of stats) {
+    const from = [...o.from.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}（${v}）`).join("、");
+    const kind = o.ds ? `<span class="k ds">素材</span>` : o.lora ? `<span class="k lora">LoRA ${o.lora}</span>` : `<span class="k">生成</span>`;
+    const d = document.createElement("div"); d.className = "lc";
+    d.innerHTML = `<div class="th"><img loading="lazy" src="/thumb/${encodeURI(o.rep.path)}">${kind}<span class="n">${o.count} 枚${o.stars ? " · ★" + o.stars : ""}</span></div>
+      <div class="b"><b>${esc(o.folder || "(root)")}</b><div class="from">${from ? "派生元: " + esc(from) : "根"}</div><div>${esc(fmtTime(o.latest))}</div></div>`;
+    d.onclick = () => setGraphMode("folder", o.folder);
+    el.appendChild(d);
+  }
+}
+
+/* 表示対象ノードの絞り込み。文脈ノード（表示対象の外にある派生元）は ctx として薄く出す */
+function graphSubset() {
+  const G = state.graph; const byId = new Map(G.nodes.map(n => [n.id, n]));
+  let inc = new Set();
+  if (state.gMode === "folder") {
+    for (const n of G.nodes) if (n.path && (n.folder || "") === state.gFolder) inc.add(n.id);
+  } else if (state.gMode === "focus") {
+    const me = G.nodes.find(n => n.path === state.gFocus); if (!me) return { nodes: [], ctx: new Set() };
+    let a = me; while (a) { inc.add(a.id); a = byId.get(a.parent); }
+    const kids = new Map(); for (const n of G.nodes) if (n.parent) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); }
+    const stack = [me]; while (stack.length) { const x = stack.pop(); for (const c of kids.get(x.id) || []) { inc.add(c.id); stack.push(c); } }
+  } else {
+    for (const n of G.nodes) inc.add(n.id);
+  }
+  const ctx = new Set();
+  for (const id of [...inc]) { const p = byId.get(byId.get(id).parent); if (p && !inc.has(p.id)) { inc.add(p.id); ctx.add(p.id); } }
+  return { nodes: G.nodes.filter(n => inc.has(n.id)), ctx };
+}
+
 function buildDisplay() {
   const G = state.graph; if (!G) return [];
-  const byId = new Map(G.nodes.map(n => [n.id, n]));
+  const sub = graphSubset(); state._ctx = sub.ctx;
+  const byId = new Map(sub.nodes.map(n => [n.id, n]));
   const kids = new Map();
-  for (const n of G.nodes) { if (n.parent && byId.has(n.parent)) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); } }
+  for (const n of sub.nodes) { if (n.parent && byId.has(n.parent)) { if (!kids.has(n.parent)) kids.set(n.parent, []); kids.get(n.parent).push(n); } }
   for (const arr of kids.values()) arr.sort((a, b) => tsOf(a) - tsOf(b));
-  function subtreeHasFolder(n) { const k = kids.get(n.id) || []; return k.some(c => c.folder === state.folder || subtreeHasFolder(c)); }
-  const visible = (n) => state.folder === null || !n.path || n.folder === state.folder || subtreeHasFolder(n);
+  const visible = (n) => true;
   const mk = (n) => ({ kind: "node", node: n, id: n.id, children: processKids(n) });
   function chunk(arr) { const out = []; for (let i = 0; i < arr.length; i += BUNDLE) out.push(arr.slice(i, i + BUNDLE)); return out; }
   function processKids(n) {
@@ -653,7 +758,7 @@ function buildDisplay() {
     }
     return d;
   }
-  return G.nodes.filter(n => !n.parent && visible(n)).map(mk);
+  return sub.nodes.filter(n => !n.parent || !byId.has(n.parent)).map(mk);
 }
 
 function layout(roots) {
@@ -708,7 +813,7 @@ function renderGraph() {
     }
     edge(d, c, cls, label);
   }
-  for (const e of state.graph.edges) { const a = pos.get(e.from), b = pos.get(e.to); if (a && b && a !== b) edge(a, b, "secondary" + (e.kind === "素材化" ? " ds" : ""), `<tspan>${esc(e.kind)}</tspan>`); }
+  if (state.gSecondary) for (const e of state.graph.edges) { const a = pos.get(e.from), b = pos.get(e.to); if (a && b && a !== b) edge(a, b, "secondary" + (e.kind === "素材化" ? " ds" : ""), `<tspan>${esc(e.kind)}</tspan>`); }
   for (const d of all) {
     const el = document.createElement("div"); el.style.left = d.x + "px"; el.style.top = d.y + "px"; el.style.width = d.w + "px"; el.style.height = d.hh + "px";
     if (d.kind === "bundle") {
@@ -719,13 +824,13 @@ function renderGraph() {
       el.onclick = () => setExp(d.key, !d.open);
       el.onmouseenter = (ev) => tip(ev, d.items.map(n => (n.meta && (n.meta.prompt || n.meta.caption)) || n.label || n.id).join("\n——\n"));
     } else {
-      const n = d.node; el.className = "gn " + n.type;
+      const n = d.node; el.className = "gn " + n.type + (state._ctx && state._ctx.has(n.id) ? " ctx" : "");
       if (n.type === "gen" || n.type === "dataset") {
         const m = n.meta || {};
         el.innerHTML = `<img loading="lazy" src="/thumb/${encodeURI(n.path)}">${n.star ? `<span class="star">★</span>` : ""}
           <div class="l1">${n.type === "dataset" ? esc(m.caption || n.name) : esc(loraShort(m) || "base")}</div>
           <div class="l2">${n.type === "dataset" ? esc(m.source || "") : `seed ${esc(m.seed ?? "")} · ${fmtTime(n.ts)}`}</div>${state.gHighlight === n.id ? `<div class="cur"></div>` : ""}`;
-        el.onclick = () => TOUCH ? openSheet(n) : openPath(n.path);
+        el.onclick = () => (state._ctx && state._ctx.has(n.id)) ? setGraphMode("folder", n.folder || "") : (TOUCH ? openSheet(n) : openPath(n.path));
         el.onmouseenter = (ev) => tip(ev, (m.prompt || m.caption || n.name) + (m.note ? "\n\nメモ: " + m.note : "") + (n.inferred ? "\n\n(派生元はプロンプト類似で推定。ライトボックスで変更可)" : ""));
       } else if (n.type === "run") {
         const c = n.config || {};
@@ -734,12 +839,14 @@ function renderGraph() {
         el.onclick = () => TOUCH ? openSheet(n) : setView("hist");
       } else {
         el.innerHTML = `<div class="l1">${esc(n.label)}</div>`;
-        if (n.type === "dsgroup") el.onclick = () => { state.folder = "dataset"; setView("grid"); };
+        if (n.type === "dsgroup") el.onclick = () => setGraphMode("folder", "dataset");
       }
     }
     el.onmouseleave = hideTip; el.onmousemove = moveTip;
     nodesEl.appendChild(el);
   }
+  $("#gSecondary").className = state.gSecondary ? "on" : "";
+  if (state.gHighlight) { const h = nodesEl.querySelector(".gn .cur"); if (h) setTimeout(() => h.parentElement.scrollIntoView({ block: "center", inline: "center" }), 30); }
 }
 function tip(ev, text) { /* ホバーのプロンプト表示は廃止（2026-08-21）。PC はクリックでライトボックス、iPhone はタップでシート */ }
 function openSheet(n) {
@@ -749,10 +856,11 @@ function openSheet(n) {
     <div class="kv">${m.seed !== undefined && m.seed !== null ? `<span>seed <b>${esc(m.seed)}</b></span>` : ""}${loraShort(m) ? `<span>LoRA <b>${esc(loraShort(m))}</b></span>` : ""}${m.source ? `<span>出所 <b>${esc(m.source)}</b></span>` : ""}${n.ts ? `<span>${esc(fmtTime(tsOf(n)))}</span>` : ""}${n.inferred ? `<span>派生元は推定</span>` : ""}</div>
     ${m.note ? `<div class="note" style="margin-top:6px;border-left:2px solid var(--c-note);padding-left:8px">${esc(m.note)}</div>` : ""}</div></div>`;
   if (n.type === "run") { const c = n.config || {}; html += `<div class="kv">${Object.entries(c).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("")}</div>`; }
-  html += `<div class="acts">${n.path ? `<button class="p" id="shOpen">画像を開く</button><button id="shCopy">プロンプトをコピー</button><button id="shDerive">派生生成</button>` : ""}<button id="shClose">閉じる</button></div>`;
+  html += `<div class="acts">${n.path ? `<button class="p" id="shOpen">画像を開く</button><button id="shLin">系統</button><button id="shCopy">プロンプトをコピー</button><button id="shDerive">派生生成</button>` : ""}<button id="shClose">閉じる</button></div>`;
   b.innerHTML = html;
   if (n.path) {
     $("#shOpen").onclick = () => { closeSheet(); openPath(n.path); };
+    $("#shLin").onclick = () => { closeSheet(); state.gHighlight = "img:" + n.path; setGraphMode("focus", n.path); };
     $("#shCopy").onclick = () => { copyText(m.prompt || m.caption || ""); toast("コピーしました"); };
     $("#shDerive").onclick = () => { closeSheet(); deriveFrom({ path: n.path, folder: n.folder, meta: m }); };
   }
@@ -774,11 +882,12 @@ function gExpandAll() {
 }
 document.addEventListener("touchstart", hideTip, { passive: true });
 document.addEventListener("scroll", hideTip, { passive: true, capture: true });
+$("#gSecondary").onclick = () => { state.gSecondary = !state.gSecondary; renderGraph(); };
 $("#gExpand").onclick = gExpandAll;
 $("#gCollapse").onclick = () => { state.gExp = new Map(); localStorage.removeItem("gExp"); renderGraph(); };
 $("#gZoomIn").onclick = () => { state.gZoom = Math.min(2.5, state.gZoom + 0.1); renderGraph(); };
 $("#gZoomOut").onclick = () => { state.gZoom = Math.max(0.3, state.gZoom - 0.1); renderGraph(); };
-$("#gFit").onclick = () => { const els = [...document.querySelectorAll("#gnodes .gn.gen")].sort((a, b) => parseFloat(b.style.left) - parseFloat(a.style.left)); if (els[0]) els[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); };
+$("#gFit").onclick = () => { const h = document.querySelector("#gnodes .gn .cur"); if (h) return h.parentElement.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); const els = [...document.querySelectorAll("#gnodes .gn.gen:not(.ctx)")].sort((a, b) => parseFloat(b.style.left) - parseFloat(a.style.left)); if (els[0]) els[0].scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); };
 $("#tabGraph").onclick = () => setView("graph");
 (() => { // PC: ドラッグで系統図をパン（スクロール領域は main）
   const g = $("#graph"), sc = document.querySelector("main");
@@ -983,6 +1092,7 @@ function deriveFrom(it) {
   f.scrollIntoView({ behavior: "smooth", block: "start" });
   toast("フォームに引き継ぎました");
 }
+$("#lbLineage").onclick = () => { const it = state.items[state.idx]; close(); state.gHighlight = "img:" + it.path; setView("graph"); setGraphMode("focus", it.path); };
 $("#lbDerive").onclick = () => {
   const it = state.items[state.idx]; const m = it.meta || {};
   close(); deriveFrom(it); return;
@@ -1091,7 +1201,7 @@ function setView(v) {
   $("#graph").style.display = v === "graph" ? "" : "none"; $("#grid").style.display = v === "grid" ? "" : "none"; $("#hist").style.display = v === "hist" ? "" : "none"; $("#ops").style.display = v === "ops" ? "" : "none";
   $("#folders").style.display = v === "ops" ? "none" : ""; $("#search").style.display = v === "ops" ? "none" : "";
   $("#starFilter").style.display = v === "grid" ? "" : "none"; $("#evFilters").style.display = v === "hist" ? "" : "none";
-  location.hash = v === "graph" ? "" : "#" + v;
+  if (v !== "graph") location.hash = "#" + v; else if (state.gMode === "list") location.hash = "";
   load();
 }
 
@@ -1118,6 +1228,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "Escape") close(); else if (e.key === "s" || e.key === "S") toggleStar(state.items[state.idx]);
 });
 
+(() => { const h = location.hash; if (h.startsWith("#graph:")) { state.gMode = "folder"; state.gFolder = decodeURIComponent(h.slice(7)); state.folder = state.gFolder; } else if (h.startsWith("#focus:")) { state.gMode = "focus"; state.gFocus = decodeURIComponent(h.slice(7)); state.gHighlight = "img:" + state.gFocus; } })();
 setView(location.hash === "#hist" ? "hist" : location.hash === "#grid" ? "grid" : location.hash === "#ops" ? "ops" : "graph");
 setInterval(() => { if (state.idx < 0 && state.view !== "ops") load(); }, 20000);
 setInterval(() => { if (state.view === "ops") loadOps(); }, 4000);
