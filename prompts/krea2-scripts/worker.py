@@ -46,12 +46,22 @@ def load_env() -> tuple[str, str]:
 URL, TOKEN = load_env()
 
 
-def api(method: str, path: str, body: dict | None = None, timeout: int = 20) -> dict:
+def api(method: str, path: str, body: dict | None = None, timeout: int = 20, retries: int = 1) -> dict:
+    """retries 回まで再試行（サーバ再起動中の 502 などを吸収）。"""
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(URL + path, data=data, method=method,
-                                 headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode() or "{}")
+    last: Exception | None = None
+    for i in range(retries):
+        try:
+            req = urllib.request.Request(URL + path, data=data, method=method,
+                                         headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read().decode() or "{}")
+        except Exception as e:  # noqa: BLE001
+            last = e
+            if i < retries - 1:
+                time.sleep(min(30, 3 * (i + 1)))
+    assert last is not None
+    raise last
 
 
 def gpu_info() -> dict:
@@ -173,7 +183,7 @@ def run_job(job: dict) -> None:
         if not force and time.time() - last_flush < 2:
             return
         try:
-            r = api("POST", f"/api/jobs/{jid}/log", {"lines": buf[-200:], "progress": progress or None})
+            r = api("POST", f"/api/jobs/{jid}/log", {"lines": buf[-200:], "progress": progress or None}, retries=3)
             cancel = cancel or bool(r.get("cancel"))
         except Exception as e:  # noqa: BLE001
             log(f"log post failed: {e}")
@@ -184,8 +194,8 @@ def run_job(job: dict) -> None:
     try:
         cmd, env = build_cmd(job)
     except Exception as e:  # noqa: BLE001
-        api("POST", f"/api/jobs/{jid}/log", {"lines": [f"ERROR: {e}"]})
-        api("POST", f"/api/jobs/{jid}/finish", {"status": "failed", "result": {"summary": str(e)}})
+        api("POST", f"/api/jobs/{jid}/log", {"lines": [f"ERROR: {e}"]}, retries=3)
+        api("POST", f"/api/jobs/{jid}/finish", {"status": "failed", "result": {"summary": str(e)}}, retries=10)
         return
     buf.append("$ " + (cmd[-1] if cmd[0] == "bash" else " ".join(cmd)))
     proc = subprocess.Popen(cmd, env=env, cwd=str(KREA), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -251,7 +261,7 @@ def run_job(job: dict) -> None:
     buf.append(f"[exit {rc}] {status}")
     flush(force=True)
     try:
-        api("POST", f"/api/jobs/{jid}/finish", {"status": status, "result": {"summary": summary, "saved": saved[-20:], "rc": rc}})
+        api("POST", f"/api/jobs/{jid}/finish", {"status": status, "result": {"summary": summary, "saved": saved[-20:], "rc": rc}}, retries=10)
     except Exception as e:  # noqa: BLE001
         log(f"finish post failed: {e}")
     log(f"job {jid} {status} (rc={rc})")
