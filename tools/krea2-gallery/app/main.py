@@ -377,7 +377,7 @@ def _run_of(meta: dict) -> tuple[str | None, int | None]:
     if not lora:
         return None, None
     b = Path(str(lora)).name
-    mt = re.match(r"^(.+?)-(\d{6})\.safetensors$", b)
+    mt = re.match(r"^(.+?)-(?:step)?(\d{6,8})\.safetensors$", b)
     if mt:
         return mt.group(1), int(mt.group(2))
     return b.replace(".safetensors", ""), None

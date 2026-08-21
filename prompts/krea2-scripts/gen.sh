@@ -37,7 +37,7 @@ import json,sys,re,os
 p,seed,lora,dit,steps,g,mu,note,parent=sys.argv[1:]
 run=step=None
 if lora:
-    m=re.match(r"^(.+?)-(\d{6})\.safetensors$", os.path.basename(lora))
+    m=re.match(r"^(.+?)-(?:step)?(\d{6,8})\.safetensors$", os.path.basename(lora))
     if m: run,step=m.group(1),int(m.group(2))
     else: run=os.path.basename(lora).replace(".safetensors","")
 print(json.dumps({"stage":"gen","prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":1.0 if lora else None,

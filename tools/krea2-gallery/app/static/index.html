@@ -413,7 +413,7 @@ function loraShort(m) {
   if (m.run && m.step) return `${m.run} · step ${m.step}`;
   if (!m.lora) return "";
   const b = String(m.lora).split("/").pop();
-  const mt = b.match(/^(.+?)-(\d{6})\.safetensors$/);
+  const mt = b.match(/^(.+?)-(?:step)?(\d{6,8})\.safetensors$/);
   return mt ? `${mt[1]} · step ${parseInt(mt[2], 10)}` : b.replace(/\.safetensors$/, "");
 }
 function matchQ(...texts) {
@@ -865,7 +865,7 @@ async function loadOps() {
   const loras = w.loras || [];
   const sel = $("#fGen select[name=lora]"); const cur = sel.value;
   sel.innerHTML = `<option value="">なし（ベース）</option>` + loras.map(l => `<option value="${esc(l)}">${esc(l.split("/").pop())}</option>`).join(""); sel.value = cur;
-  const runs = [...new Set(loras.map(l => (l.split("/").pop().match(/^(.+?)-\d{6}\.safetensors$/) || [])[1]).filter(Boolean))];
+  const runs = [...new Set(loras.map(l => (l.split("/").pop().match(/^(.+?)-(?:step)?\d{6,8}\.safetensors$/) || [])[1]).filter(Boolean))];
   const rs = $("#fCompare select[name=run]"); const rc = rs.value; rs.innerHTML = runs.map(r => `<option>${esc(r)}</option>`).join(""); if (rc) rs.value = rc;
   $("#dsHint").textContent = w.dataset_count !== undefined ? `素材 ${w.dataset_count} 枚で学習` : "";
   // current job
