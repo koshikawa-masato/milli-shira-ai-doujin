@@ -190,7 +190,8 @@
     #lb aside { border-left: 0; border-top: 1px solid var(--line); max-height: 62dvh; border-radius: 14px 14px 0 0; padding-top: 6px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); transition: max-height .25s; }
     #lb aside.collapsed { max-height: calc(64px + env(safe-area-inset-bottom)); overflow: hidden; }
     #lb .handle { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 8px; }
-    #lb .nav { display: none; } #lb .close { right: 10px; top: 10px; }
+    #lb .nav { display: none; }
+    #lb .close { right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 24px; background: rgba(0,0,0,.6); border: 1px solid var(--line); }
   }
   @media (min-width: 701px) { #lb .handle { display: none; } }
   /* iPhone セーフエリア（ノッチ・ホームバー・横向きの左右） */
@@ -248,7 +249,7 @@
   @media (max-width: 800px) {
     #lb.open { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     #lb aside { border-left: 0; border-top: 1px solid var(--line); max-height: 45vh; }
-    #lb .next { right: 10px; } #lb .close { right: 10px; }
+    #lb .next { right: 10px; } #lb .close { right: calc(10px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); }
     .ev { grid-template-columns: 56px 1fr; } .ev .kind { grid-column: 1 / -1; }
   }
 </style>
