@@ -16,7 +16,15 @@ mkdir -p "$OUT"
 cd ~/krea2/musubi-tuner
 source .venv/bin/activate
 ARGS=()
-if [ -n "$LORA" ]; then ARGS+=(--lora_weight "$LORA" --lora_multiplier 1.0); fi
+# LoRA 適用時は VRAM が溢れて極端に遅くなる（16GB で 1 枚 14 分）ので、ブロックの一部を CPU に退避する
+# 環境変数 BLOCKS_TO_SWAP で上書き可（0 で無効）
+if [ -n "$LORA" ]; then
+  ARGS+=(--lora_weight "$LORA" --lora_multiplier "${LORA_MULTIPLIER:-1.0}")
+  SWAP="${BLOCKS_TO_SWAP:-12}"
+else
+  SWAP="${BLOCKS_TO_SWAP:-0}"
+fi
+if [ "$SWAP" != "0" ]; then ARGS+=(--blocks_to_swap "$SWAP"); fi
 BEFORE=$(ls -t "$OUT"/*.png 2>/dev/null | head -1)
 python src/musubi_tuner/krea2_generate_image.py \
   "$PROMPT" \
