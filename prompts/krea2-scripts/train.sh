@@ -33,7 +33,7 @@ CMD="accelerate launch --num_cpu_threads_per_process 1 --mixed_precision bf16 \
   --output_dir ~/krea2/output --output_name $RUN"
 START_JSON=$(python3 - "$RUN" "$STEPS" "$EVERY" "$DIM" "$LR" "$SWAP" "$NOTE" "$DATASET_JSON" "$CMD" "$GFOLDER" <<'PY'
 import json,sys
-run,steps,every,dim,lr,swap,note,ds,cmd=sys.argv[1:]
+run,steps,every,dim,lr,swap,note,ds,cmd=sys.argv[1:10]
 print(json.dumps({"event":"train_start","run":run,"dataset_folder":sys.argv[10] if len(sys.argv)>10 else "dataset","dataset":json.loads(ds),
   "config":{"max_train_steps":int(steps),"save_every_n_steps":int(every),"network_dim":int(dim),"learning_rate":lr,
             "blocks_to_swap":int(swap),"base":"Krea-2 Raw","resolution":"512 (bucket)","seed":42},
