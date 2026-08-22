@@ -148,6 +148,12 @@ def build_cmd(job: dict) -> tuple[list[str], dict]:
             raise FileNotFoundError(f"LoRA not found: {lora}")
         if p.get("lora_multiplier") not in (None, ""):
             env["LORA_MULTIPLIER"] = str(float(p["lora_multiplier"]))
+        for k in ("width", "height"):
+            if p.get(k):
+                v = int(p[k])
+                if v % 16 or not 512 <= v <= 1536:
+                    raise ValueError(f"{k} must be a multiple of 16 in 512..1536")
+                env[k.upper()] = str(v)
         # 複数枚は seed を +1 ずつ
         parts = " && ".join(
             f'{SCRIPTS}/gen.sh "$PROMPT" {seed0 + i} "$LORA" "$OUT"' for i in range(count))

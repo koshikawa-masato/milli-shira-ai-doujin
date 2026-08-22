@@ -10,7 +10,7 @@ PROMPT="${1:?prompt required}"
 SEED="${2:-0}"
 LORA="${3:-}"
 OUT="${4:-$HOME/krea2/output/compare}"
-STEPS=8; GUIDANCE=1; MU=1.15; W=1024; H=1024
+STEPS=8; GUIDANCE=1; MU=1.15; W="${WIDTH:-1024}"; H="${HEIGHT:-1024}"   # 環境変数 WIDTH/HEIGHT で縦長・横長にできる
 DIT=~/krea2/models/turbo.safetensors
 mkdir -p "$OUT"
 cd ~/krea2/musubi-tuner
@@ -50,7 +50,7 @@ if lora:
     else: run=os.path.basename(lora).replace(".safetensors","")
 print(json.dumps({"stage":"gen","prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":float(mult) if lora else None,
   "run":run,"step":step,"dit":os.path.basename(dit),"steps":int(steps),"guidance_scale":float(g),"mu":float(mu),
-  "width":1024,"height":1024,"note":note or None,"parent":parent or None},ensure_ascii=False))
+  "width":int(os.environ.get("WIDTH","1024")),"height":int(os.environ.get("HEIGHT","1024")),"note":note or None,"parent":parent or None},ensure_ascii=False))
 PY
 )
   echo "$META" > "$NEW.json"

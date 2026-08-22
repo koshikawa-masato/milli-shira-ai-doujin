@@ -323,6 +323,7 @@
         <label>LoRA 倍率<input name="lora_multiplier" type="number" step="0.1" min="0" max="2" value="1.0" inputmode="decimal"></label>
         <label>出力フォルダ<input name="folder" value="test" placeholder="test"></label>
         <label>枚数（seed を +1 ずつ）<input name="count" type="number" value="1" min="1" max="8" inputmode="numeric"></label>
+        <label>サイズ（幅×高さ）<select name="size"><option value="1024x1024">1024×1024（正方形）</option><option value="832x1216">832×1216（縦長・全身向き）</option><option value="1216x832">1216×832（横長）</option></select></label>
         <label class="wide">派生元（任意・ギャラリー上のパス）<input name="parent" placeholder="test/2026....png"></label>
         <label class="wide">メモ（なぜこのプロンプトか）<input name="note" placeholder="耳を大きくしたい"></label>
         <div class="act"><button class="btn-p" type="submit">生成をキューに入れる</button><span class="hint">1 枚 約 1 分（モデル読込込み）</span></div>
@@ -1080,7 +1081,7 @@ document.querySelectorAll(".optabs button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".optabs button").forEach(x => x.className = x === b ? "on" : "");
   for (const f of ["gen", "train", "compare", "note"]) document.getElementById("f" + f[0].toUpperCase() + f.slice(1)).style.display = f === b.dataset.f ? "" : "none";
 });
-$("#fGen").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; d.count = +d.count || 1; if (!d.lora) delete d.lora_multiplier; const note = d.note; delete d.note; if (await postJob("gen", d, note)) e.target.querySelector("[name=note]").value = ""; };
+$("#fGen").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; d.count = +d.count || 1; if (!d.lora) delete d.lora_multiplier; if (d.size) { const [w, h] = d.size.split("x"); d.width = +w; d.height = +h; delete d.size; } const note = d.note; delete d.note; if (await postJob("gen", d, note)) e.target.querySelector("[name=note]").value = ""; };
 $("#fTrain").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); const note = d.note; delete d.note; for (const k of ["steps", "save_every", "dim", "swap", "compare_seed"]) d[k] = +d[k]; await postJob("train", d, note); };
 $("#fCompare").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); d.seed = +d.seed; const note = d.note; delete d.note; await postJob("compare", d, note); };
 $("#fNote").onsubmit = async (e) => { e.preventDefault(); const d = fd(e.target); await addNote(d.text, null); e.target.reset(); toast("メモを残しました"); };
