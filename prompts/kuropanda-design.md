@@ -1,5 +1,7 @@
 # kuropanda デザイン仕様とプロンプト定型文
 
+人物設定（役割・性格・来歴・話し方）は `kuropanda-character.md`。ここは見た目と生成の仕様。
+
 2026-08-20〜21 に Krea 2 Turbo（LoRA なし）で検証して決めたもの。
 ギャラリー: https://pi5-home-1.tail8ec65a.ts.net:8452/ の `inverted` / `hanafuda` フォルダに実例あり。
 
