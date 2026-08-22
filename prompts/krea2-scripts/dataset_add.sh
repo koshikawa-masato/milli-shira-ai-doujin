@@ -7,7 +7,8 @@
 #         "A girl in a black panda hoodie, anime style, front view, white background" "正面の基準画像"
 set -e
 SRC="${1:?image required}"; CAPTION="${2:?caption required}"; SOURCE="${3:-unknown}"; HOW="${4:-}"; NOTE="${5:-}"
-DS=~/krea2/dataset/images
+DS="${DATASET_DIR:-$HOME/krea2/dataset/images}"   # 環境変数 DATASET_DIR で別データセットに登録できる
+GFOLDER="${GALLERY_FOLDER:-dataset}"               # ギャラリー上のフォルダ名
 mkdir -p "$DS"
 EXT="${SRC##*.}"; EXT="${EXT,,}"; [ "$EXT" = "jpeg" ] && EXT=jpg
 N=$(ls "$DS"/*.png "$DS"/*.jpg 2>/dev/null | wc -l)
@@ -27,5 +28,5 @@ echo "$META" > "$DEST.json"
 echo "added: $DEST"
 if [ -f ~/krea2/.gallery_env ]; then
   # ギャラリー上は dataset/<NAME>.<ext> で保存されるようにファイル名を揃える
-  ~/krea2/scripts/upload.sh "$DEST" dataset "$META" || echo "upload failed (kept at $DEST)"
+  ~/krea2/scripts/upload.sh "$DEST" "$GFOLDER" "$META" || echo "upload failed (kept at $DEST)"
 fi

@@ -40,15 +40,15 @@ python src/musubi_tuner/krea2_generate_image.py \
   "${ARGS[@]}"
 NEW=$(ls -t "$OUT"/*.png 2>/dev/null | head -1)
 if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
-  META=$(python3 - "$PROMPT" "$SEED" "$LORA" "$DIT" $STEPS $GUIDANCE $MU "${NOTE:-}" "${PARENT:-}" <<'PY'
+  META=$(python3 - "$PROMPT" "$SEED" "$LORA" "$DIT" $STEPS $GUIDANCE $MU "${NOTE:-}" "${PARENT:-}" "${LORA_MULTIPLIER:-1.0}" <<'PY'
 import json,sys,re,os
-p,seed,lora,dit,steps,g,mu,note,parent=sys.argv[1:]
+p,seed,lora,dit,steps,g,mu,note,parent,mult=sys.argv[1:]
 run=step=None
 if lora:
     m=re.match(r"^(.+?)-(?:step)?(\d{6,8})\.safetensors$", os.path.basename(lora))
     if m: run,step=m.group(1),int(m.group(2))
     else: run=os.path.basename(lora).replace(".safetensors","")
-print(json.dumps({"stage":"gen","prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":1.0 if lora else None,
+print(json.dumps({"stage":"gen","prompt":p,"seed":int(seed),"lora":lora or None,"lora_multiplier":float(mult) if lora else None,
   "run":run,"step":step,"dit":os.path.basename(dit),"steps":int(steps),"guidance_scale":float(g),"mu":float(mu),
   "width":1024,"height":1024,"note":note or None,"parent":parent or None},ensure_ascii=False))
 PY

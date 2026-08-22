@@ -155,6 +155,11 @@ def build_cmd(job: dict) -> tuple[list[str], dict]:
         return ["bash", "-c", parts], env
     if t == "train":
         run = re.sub(r"[^A-Za-z0-9_.-]", "", str(p["run"]))
+        ds = re.sub(r"[^A-Za-z0-9_.-]", "", str(p.get("dataset") or "dataset"))
+        if ds != "dataset":
+            env["DATASET_DIR"] = str(KREA / ds / "images")
+            env["DATASET_TOML"] = str(KREA / f"{ds}.toml")
+            env["GALLERY_FOLDER"] = ds
         args = [str(SCRIPTS / "train.sh"), run, str(int(p.get("steps") or 1800)), str(int(p.get("save_every") or 300)),
                 str(int(p.get("dim") or 32)), str(p.get("lr") or "1e-4"), str(int(p.get("swap") or 16)), str(job.get("note") or "")]
         cmd = " ".join(f"'{a}'" for a in args)
