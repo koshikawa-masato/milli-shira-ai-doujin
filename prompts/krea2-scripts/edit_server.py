@@ -62,6 +62,8 @@ def edit_one(job: dict, out: str, size: list, steps: int, guidance: float) -> st
         "prompt": job["prompt"], "negative_prompt": job.get("negative") or NEG_DEFAULT,
         "seed": int(job.get("seed") or 0), "infer_steps": steps, "guidance_scale": guidance,
         "control_image_path": job["control"], "image_size_height": int(size[0]), "image_size_width": int(size[1]),
+        # official_resize=False なら参照画像を公式サイズ（約1MP）へ縮小せず、出力サイズに合わせる（描き足しで顔の画素を保つ用）
+        "resize_control_to_official_size": bool(job.get("official_resize", True)),
     })
     with torch.no_grad():
         control_latents, control_nps = q.prepare_image_inputs(args, DEVICE, VAE)

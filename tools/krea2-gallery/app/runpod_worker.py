@@ -213,7 +213,8 @@ def run_edit_on_pod(pod: Pod, job: dict) -> None:
             pod.scp(local, f"{remote_dir}/ctrl_{i}.png")
             ctrl_remote.append(f"{remote_dir}/ctrl_{i}.png")
         spec = {"jobs": [{"prompt": p["prompt"], "control": ctrl_remote, "seed": int(p.get("seed") or 0),
-                          "note": job.get("note") or "", "negative": p.get("negative") or None}],
+                          "note": job.get("note") or "", "negative": p.get("negative") or None,
+                          "official_resize": not bool(p.get("no_official_resize"))}],
                 "out": f"{POD_ROOT}/output/{folder}", "size": [int(p.get("height") or 1024), int(p.get("width") or 1024)],
                 "steps": int(p.get("steps") or 25), "guidance": float(p.get("guidance") or 4.0)}
         spec_local = os.path.join(td, "spec.json")
