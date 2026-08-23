@@ -221,7 +221,8 @@ def run_edit_on_pod(pod: Pod, job: dict) -> None:
             mask_remote = f"{remote_dir}/mask.png"
         spec = {"jobs": [{"prompt": p["prompt"], "control": ctrl_remote, "seed": int(p.get("seed") or 0), "mask": mask_remote,
                           "note": job.get("note") or "", "negative": p.get("negative") or None,
-                          "official_resize": not bool(p.get("no_official_resize"))}],
+                          "official_resize": not bool(p.get("no_official_resize")),
+                          "resize_to_output": bool(p.get("resize_to_output")) or bool(mask_remote)}],  # マスク付きは自動で同サイズに
                 "out": f"{POD_ROOT}/output/{folder}", "size": [int(p.get("height") or 1024), int(p.get("width") or 1024)],
                 "steps": int(p.get("steps") or 25), "guidance": float(p.get("guidance") or 4.0)}
         spec_local = os.path.join(td, "spec.json")

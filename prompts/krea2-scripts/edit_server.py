@@ -65,7 +65,11 @@ def edit_one(job: dict, out: str, size: list, steps: int, guidance: float) -> st
         # official_resize=False なら参照画像を公式サイズ（約1MP）へ縮小せず、出力サイズに合わせる（描き足しで顔の画素を保つ用）
         "resize_control_to_official_size": bool(job.get("official_resize", True)),
         "mask_path": job.get("mask") or None,   # 白=生成する領域、黒=元画像を保つ（インペイント／描き足し）
+        # resize_to_output=True: 参照を出力サイズに合わせる（マスクは「参照1枚目が出力と同サイズ」のときだけ効く）
+        "resize_control_to_image_size": bool(job.get("resize_to_output", False)),
     })
+    if job.get("resize_to_output"):
+        args.resize_control_to_official_size = False
     VAE.to(DEVICE)  # decode_latent が VAE を CPU に戻すので、毎回 GPU へ
     with torch.no_grad():
         control_latents, control_nps = q.prepare_image_inputs(args, DEVICE, VAE)
