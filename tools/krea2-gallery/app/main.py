@@ -668,11 +668,15 @@ def api_job_create(request: Request, body: dict = Body(...)):
     if t == "compare" and not (params.get("run") and (params.get("prompt") or "").strip()):
         raise HTTPException(400, "run and prompt required")
     if t == "edit":
-        ctrl = [str(c).strip("/") for c in (params.get("control") or []) if str(c).strip()]
+        # 先頭は必ずギャラリー上の画像。以降は ギャラリー上のパス か、Pod 上の絶対パス（/workspace/... は Pod にある前提で通す）
+        ctrl = [str(c).strip() if str(c).strip().startswith("/") else str(c).strip().strip("/")
+                for c in (params.get("control") or []) if str(c).strip()]
         if not (params.get("prompt") or "").strip() or not ctrl:
             raise HTTPException(400, "prompt and control image required")
+        if ctrl[0].startswith("/"):
+            raise HTTPException(400, "first control image must be a gallery path")
         for c in ctrl:
-            if not (IMAGES / c).is_file():
+            if not c.startswith("/") and not (IMAGES / c).is_file():
                 raise HTTPException(400, f"image not found: {c}")
         params["control"] = ctrl
     with _lock:
