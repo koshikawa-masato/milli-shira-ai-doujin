@@ -167,15 +167,21 @@ class Pod:
                     break
             else:
                 raise RuntimeError(f"pod did not reach RUNNING (last {p.get('status')})")
-        d = ((p.get("ssh") or {}).get("direct") or {})
-        self.host, self.port = d.get("host"), d.get("port")
+        # RUNNING になってから ssh の公開ポート情報が載るまで数十秒かかることがあるので待つ
+        self.host = self.port = None
+        for _ in range(36):
+            d = ((p.get("ssh") or {}).get("direct") or {})
+            self.host, self.port = d.get("host"), d.get("port")
+            if not self.host:
+                for pt in ((p.get("runtime") or {}).get("ports") or []):   # runtime.ports から 22/tcp を探す
+                    if pt.get("private") == 22 and pt.get("type") == "tcp":
+                        self.host, self.port = pt["ip"], pt["public"]
+            if self.host:
+                break
+            time.sleep(5)
+            p = self.info()
         if not self.host:
-            # runtime.ports から 22/tcp を探す
-            for pt in ((p.get("runtime") or {}).get("ports") or []):
-                if pt.get("private") == 22 and pt.get("type") == "tcp":
-                    self.host, self.port = pt["ip"], pt["public"]
-        if not self.host:
-            raise RuntimeError("pod has no public ssh port")
+            raise RuntimeError("pod has no public ssh port (waited 3 min)")
         for i in range(30):
             r = self.ssh(f"bash {POD_ROOT}/scripts/pod_boot.sh", timeout=180)
             if r.returncode == 0 and "BOOT_OK" in r.stdout:
