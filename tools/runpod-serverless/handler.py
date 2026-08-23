@@ -100,6 +100,10 @@ def handler(job: dict) -> dict:
         arr = (pixels[0].permute(1, 2, 0).clamp(0, 1) * 255).round().to(torch.uint8).numpy()
         buf = io.BytesIO()
         Image.fromarray(arr).save(buf, format="PNG")
+        if os.environ.get("HANDLER_DEBUG_DIR"):  # ローカルテスト用: 画像をファイルにも残す
+            os.makedirs(os.environ["HANDLER_DEBUG_DIR"], exist_ok=True)
+            with open(os.path.join(os.environ["HANDLER_DEBUG_DIR"], f"{job.get('id', 'job')}.png"), "wb") as fh:
+                fh.write(buf.getvalue())
         return {"image": base64.b64encode(buf.getvalue()).decode(), "seed": args.seed,
                 "width": int(arr.shape[1]), "height": int(arr.shape[0]), "elapsed_sec": round(time.time() - t0, 1)}
     except Exception as e:  # SDK が FAILED にするが、原因を output にも残す

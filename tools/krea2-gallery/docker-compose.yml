@@ -23,5 +23,7 @@ services:
     environment:
       - TZ=Asia/Tokyo
       - GALLERY_URL=http://gallery:8020
+    volumes:
+      - ./ssh:/root/.ssh/keys:ro   # Pod モードの ssh 鍵（ssh-keygen で作り、公開鍵を Pod の PUBLIC_KEY に登録）
     depends_on:
       - gallery

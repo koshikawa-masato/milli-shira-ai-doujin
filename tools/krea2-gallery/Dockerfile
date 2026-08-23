@@ -1,5 +1,7 @@
 FROM python:3.12-slim
 WORKDIR /app
+# openssh-client は RunPod 中継ワーカー（Pod モード）の ssh/scp 用
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends openssh-client && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir fastapi==0.115.* "uvicorn[standard]==0.32.*" pillow==11.* python-multipart==0.0.*
 COPY app/ /app/
 ENV DATA_DIR=/data
