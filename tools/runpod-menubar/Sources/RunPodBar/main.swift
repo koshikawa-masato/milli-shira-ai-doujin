@@ -51,6 +51,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var jobs: [[String: Any]] = []
     var worker: [String: Any] = [:]
     var podError: String?
+    var balance: Double?          // 残高 USD
+    var spendPerHr: Double?       // 現在の消費 USD/h（GraphQL myself）
     var galleryError: String?
     var timer: Timer?
     var sessionStart: [String: Date] = [:]   // 自分が見ていた RUNNING の開始（目安の課金表示用）
@@ -67,7 +69,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func refresh() {
         cfg = Config.load()
         fetchPods()
+        fetchBalance()
         fetchGallery()
+    }
+
+    func fetchBalance() {
+        guard !cfg.apiKey.isEmpty else { return }
+        request("https://api.runpod.io/graphql", method: "POST", bearer: cfg.apiKey,
+                body: ["query": "{ myself { clientBalance currentSpendPerHr } }"]) { obj, _ in
+            let me = ((obj as? [String: Any])?["data"] as? [String: Any])?["myself"] as? [String: Any]
+            self.balance = me?["clientBalance"] as? Double
+            self.spendPerHr = me?["currentSpendPerHr"] as? Double
+            self.render()
+        }
     }
 
     func request(_ url: String, method: String = "GET", bearer: String? = nil, body: [String: Any]? = nil,
@@ -167,7 +181,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let status = podError != nil ? nil : p?.status
         let title = NSMutableAttributedString(string: "●", attributes: [.foregroundColor: color(for: status), .font: NSFont.systemFont(ofSize: 13)])
         var suffix = ""
-        if p?.status == "RUNNING" { suffix = String(format: " $%.2f/h", p!.cost) }
+        if let b = balance { suffix += String(format: " $%.2f", b) }
+        if p?.status == "RUNNING" { suffix += String(format: " (-%.2f/h)", spendPerHr ?? p!.cost) }
         if let rj = runningJob, let pct = (rj["progress"] as? [String: Any])?["pct"] {
             let v = (pct as? Double) ?? Double((pct as? Int) ?? 0)
             suffix += String(format: " %d%%", Int(v))
@@ -188,6 +203,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             tip.append(line)
         }
         if pods.isEmpty && podError == nil { tip.append("Pod なし") }
+        if let b = balance {
+            var line = String(format: "残高 $%.2f", b)
+            if let s = spendPerHr, s > 0 { line += String(format: "  消費 $%.3f/h  → あと約 %.1f 時間", s, b / s) }
+            tip.append(line)
+        }
         if let e = galleryError { tip.append("ギャラリー: \(e)") } else {
             let online = (worker["online"] as? Bool) ?? false
             tip.append("WSL2 ワーカー: \(online ? "online" : "offline")")
@@ -213,6 +233,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let start = NSMenuItem(title: "    Pod を起動する", action: #selector(startPod(_:)), keyEquivalent: "")
                 start.representedObject = pod.id; start.target = self; m.addItem(start)
             }
+        }
+        if let b = balance {
+            var t = String(format: "残高 $%.2f", b)
+            if let s = spendPerHr, s > 0 { t += String(format: "  （$%.3f/h → あと約 %.1f 時間）", s, b / s) }
+            m.addItem(withTitle: t, action: nil, keyEquivalent: "")
         }
         m.addItem(.separator())
         if let e = galleryError { m.addItem(withTitle: "ギャラリー: \(e)", action: nil, keyEquivalent: "") }
