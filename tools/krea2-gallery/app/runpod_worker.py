@@ -327,6 +327,13 @@ def main() -> None:
     pod = Pod() if MODE == "pod" else None
     pod_used = False
     idle_since = None
+    if pod:  # ワーカー再起動時に Pod が動いていたら、猶予後に止める対象として扱う（止め忘れ防止）
+        try:
+            pod_used = pod.info().get("status") == "RUNNING"
+            if pod_used:
+                log("pod is RUNNING at startup: will stop after idle timeout")
+        except Exception as e:
+            log(f"pod status check failed: {e}")
     while True:
         try:
             r = gallery("/api/jobs/next?worker=runpod")
