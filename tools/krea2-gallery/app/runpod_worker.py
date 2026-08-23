@@ -4,7 +4,8 @@ Pod/Serverless は tailnet 外で Pi5 に届かないので、Pi5 側から取�
 
 モード（環境変数で切替）:
   Pod モード      RUNPOD_POD_ID を設定。ジョブが来たら Pod を起動 → ssh で edit_batch.sh を実行 → 結果を scp で回収 →
-                  キューが空になったら Pod を停止（RUNPOD_IDLE_STOP_SEC 秒待ってから。既定 0 = 即停止）
+                  キューが空になったら Pod を停止（RUNPOD_IDLE_STOP_SEC 秒待ってから。既定 600 = 10 分の猶予。
+                  猶予中は常駐サーバにモデルが載ったままなので、続けて投げたジョブは読込なしで始まる）
   Serverless モード RUNPOD_ENDPOINT_ID を設定。api.runpod.ai の /run に投げて /status を待つ
 共通: RUNPOD_API_KEY, GALLERY_URL（既定 http://gallery:8020）, GALLERY_TOKEN
 Pod モードの ssh 鍵: RUNPOD_SSH_KEY（既定 /root/.ssh/keys/id_ed25519。compose で ./ssh を読み取り専用マウント）
@@ -28,7 +29,7 @@ import uuid
 API_KEY = os.environ.get("RUNPOD_API_KEY", "").strip()
 ENDPOINT = os.environ.get("RUNPOD_ENDPOINT_ID", "").strip()
 POD_ID = os.environ.get("RUNPOD_POD_ID", "").strip()
-IDLE_STOP = int(os.environ.get("RUNPOD_IDLE_STOP_SEC", "0") or 0)
+IDLE_STOP = int(os.environ.get("RUNPOD_IDLE_STOP_SEC", "600") or 0)
 SSH_KEY = os.environ.get("RUNPOD_SSH_KEY", "/root/.ssh/keys/id_ed25519")
 GALLERY = os.environ.get("GALLERY_URL", "http://gallery:8020").rstrip("/")
 TOKEN = os.environ.get("GALLERY_TOKEN", "")
@@ -192,13 +193,14 @@ class Pod:
 
 
 def run_edit_on_pod(pod: Pod, job: dict) -> None:
+    """Pod 上の常駐編集サーバ（edit_server.py、pod_boot.sh が起動）にジョブ指示を置いて結果を待つ"""
     jid, p = job["id"], job.get("params") or {}
     control = [c for c in (p.get("control") or []) if c]
     folder = re.sub(r"[^A-Za-z0-9_./-]", "_", str(p.get("folder") or "edit")).strip("/") or "edit"
     pod.ensure_running(jid)
-    # 参照画像を Pod へ（ギャラリー上のパスは送る。/workspace... の絶対パスは Pod 上にあるものとして使う）
+    queue = f"{POD_ROOT}/queue"
     remote_dir = f"{POD_ROOT}/incoming/{jid}"
-    pod.ssh(f"mkdir -p {remote_dir}")
+    pod.ssh(f"mkdir -p {remote_dir} {queue}")
     ctrl_remote = []
     with tempfile.TemporaryDirectory() as td:
         for i, c in enumerate(control):
@@ -210,52 +212,51 @@ def run_edit_on_pod(pod: Pod, job: dict) -> None:
                 fh.write(fetch_image(c))
             pod.scp(local, f"{remote_dir}/ctrl_{i}.png")
             ctrl_remote.append(f"{remote_dir}/ctrl_{i}.png")
-        jobs_file = os.path.join(td, "jobs.jsonl")
-        with open(jobs_file, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps({"prompt": p["prompt"], "control": ctrl_remote, "seed": int(p.get("seed") or 0),
-                                 "note": job.get("note") or "", "negative": p.get("negative") or None}, ensure_ascii=False) + "\n")
-        pod.scp(jobs_file, f"{remote_dir}/jobs.jsonl")
-    w, h = int(p.get("width") or 1024), int(p.get("height") or 1024)
-    env = (f'SIZE="{h} {w}" FP8=0 TE_CPU=0 BLOCKS_TO_SWAP=0 STEPS={int(p.get("steps") or 25)} '
-           f'GUIDANCE={float(p.get("guidance") or 4.0)}')
-    cmd = f"cd {POD_ROOT} && {env} {POD_ROOT}/scripts/edit_batch.sh {remote_dir}/jobs.jsonl {POD_ROOT}/output/{folder} 2>&1"
-    job_log(jid, [f"run: {cmd}"], {"pct": 3})
+        spec = {"jobs": [{"prompt": p["prompt"], "control": ctrl_remote, "seed": int(p.get("seed") or 0),
+                          "note": job.get("note") or "", "negative": p.get("negative") or None}],
+                "out": f"{POD_ROOT}/output/{folder}", "size": [int(p.get("height") or 1024), int(p.get("width") or 1024)],
+                "steps": int(p.get("steps") or 25), "guidance": float(p.get("guidance") or 4.0)}
+        spec_local = os.path.join(td, "spec.json")
+        with open(spec_local, "w", encoding="utf-8") as fh:
+            json.dump(spec, fh, ensure_ascii=False)
+        pod.scp(spec_local, f"{queue}/{jid}.json")
+    job_log(jid, [f"queued on pod: {len(control)} control images, {spec['size'][1]}x{spec['size'][0]}"], {"pct": 3})
     t0 = time.time()
-    proc = subprocess.Popen(pod.ssh_base() + [f"root@{pod.host}", cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    saved, buf, last = [], [], time.time()
-    assert proc.stdout is not None
-    for raw in proc.stdout:
-        for line in raw.replace("\r", "\n").split("\n"):
-            line = line.strip()
-            if not line:
-                continue
-            m = re.search(r"Denoising steps:\s*(\d+)%", line)
-            if m:
-                pct = 5 + int(m.group(1)) * 0.9
-                if time.time() - last > 15:
-                    job_log(jid, [line[-120:]], {"pct": pct, "elapsed": int(time.time() - t0)})
-                    last = time.time()
-                continue
-            if line.startswith("saved: "):
-                saved.append(line[7:].strip())
-            if "Loading" in line and "%" in line and time.time() - last < 15:
-                continue
-            buf.append(line[-200:])
-            if len(buf) >= 5 or time.time() - last > 15:
-                job_log(jid, buf, {"elapsed": int(time.time() - t0)})
-                buf, last = [], time.time()
+    last_line, last_pct = "", 3.0
+    while True:
+        time.sleep(10)
+        r = pod.ssh(f"cat {queue}/{jid}.state 2>/dev/null; echo '---'; cat {queue}/server.ready 2>/dev/null; echo '---'; "
+                    f"tail -c 400 {queue}/{jid}.log 2>/dev/null | tr '\\r' '\\n' | grep -v '^$' | tail -1", timeout=60)
+        parts = r.stdout.split("---")
+        state = parts[0].strip() if len(parts) > 0 else ""
+        ready = parts[1].strip() if len(parts) > 1 else ""
+        line = parts[2].strip() if len(parts) > 2 else ""
+        el = int(time.time() - t0)
+        if state.startswith("done"):
+            saved = state.split()[1:]
+            break
+        if state.startswith("failed"):
+            job_log(jid, [state])
+            finish(jid, "failed", {"error": state[7:], "elapsed_sec": el})
+            return
         if cancelled(jid):
-            proc.kill()
-            pod.ssh("pkill -f qwen_image_generate_image || true")
+            pod.ssh(f"rm -f {queue}/{jid}.json")  # 未着手なら取り下げ（処理中は完走させる）
             finish(jid, "cancelled", {})
             return
-    proc.wait()
-    if buf:
-        job_log(jid, buf)
-    if proc.returncode != 0 or not saved:
-        finish(jid, "failed", {"rc": proc.returncode, "error": "no output" if not saved else "edit_batch failed"})
-        return
-    # 回収して登録
+        if not ready:
+            msg = f"pod: loading models... {el}s"
+            if msg != last_line:
+                job_log(jid, [msg], {"pct": 4, "elapsed": el})
+                last_line = msg
+            continue
+        m = re.search(r"Denoising steps:\s*(\d+)%", line)
+        pct = 5 + int(m.group(1)) * 0.9 if m else last_pct
+        if line and line != last_line:
+            job_log(jid, [line[-160:]], {"pct": pct, "elapsed": el})
+            last_line, last_pct = line, pct
+        if el > 3600:
+            finish(jid, "failed", {"error": "timeout"})
+            return
     paths = []
     with tempfile.TemporaryDirectory() as td:
         for rp in saved:
