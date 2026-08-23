@@ -4,6 +4,7 @@
 #   例: edit.sh "Change her black hoodie into a white sailor school uniform. Keep her face, eyes and hair exactly the same." \
 #         compare/kuropanda_v2/20260822-162704-170_0.png 0 ~/krea2/output/edit
 #   環境変数: NOTE="理由"  STEPS=25  GUIDANCE=4.0  BLOCKS_TO_SWAP=20  SIZE="1024 1024"  NEGATIVE="..."（省略時は既定の品質系ネガティブ）
+#   大きい GPU（RunPod 96GB 等）では FP8=0 TE_CPU=0 BLOCKS_TO_SWAP=0 で bf16・退避なし
 # 出力は Pi5 ギャラリーへ自動アップロード（派生元 = 元画像）
 set -e
 export PATH=$PATH:/usr/lib/wsl/lib
@@ -33,8 +34,8 @@ python src/musubi_tuner/qwen_image_generate_image.py \
   --negative_prompt "${NEGATIVE:-lowres, blurry, bad anatomy, extra fingers, text, watermark}" \
   --resize_control_to_official_size \
   --image_size ${SIZE:-1024 1024} --infer_steps "${STEPS:-25}" --guidance_scale "${GUIDANCE:-4.0}" \
-  --attn_mode torch --fp8_scaled --text_encoder_cpu \
-  --blocks_to_swap "${BLOCKS_TO_SWAP:-20}" \
+  --attn_mode torch $( [ "${FP8:-1}" = "1" ] && echo --fp8_scaled ) $( [ "${TE_CPU:-1}" = "1" ] && echo --text_encoder_cpu ) \
+  $( [ "${BLOCKS_TO_SWAP:-20}" != "0" ] && echo --blocks_to_swap "${BLOCKS_TO_SWAP:-20}" ) \
   --seed "$SEED" --save_path "$OUT"
 NEW=$(ls -t "$OUT"/*.png 2>/dev/null | head -1)
 if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
