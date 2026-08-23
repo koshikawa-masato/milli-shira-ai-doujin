@@ -43,7 +43,8 @@ def log(msg: str) -> None:
 
 
 def http(url: str, method: str = "GET", body: bytes | None = None, headers: dict | None = None, timeout: int = 60) -> dict:
-    req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
+    h = {"User-Agent": "krea2-runpod-worker/1.0", **(headers or {})}  # 既定の Python-urllib UA は api.runpod.io に 403 で弾かれる
+    req = urllib.request.Request(url, data=body, method=method, headers=h)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode() or "{}")
 
