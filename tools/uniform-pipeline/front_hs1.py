@@ -53,13 +53,22 @@ nonwhite = (wa.min(axis=2) <= 235)
 def center(y0, y1):
     cols = np.where(nonwhite[y0:y1].any(axis=0))[0]; return (cols.min() + cols.max()) / 2
 axis = (center(40, 120) + center(900, 950) + center(1150, 1200)) / 3 + 5   # 髪・脚・靴の中心。+5 は袖を胴の縁に付ける補正
-poly = [(558, 262), (640, 262), (652, 360), (640, 470), (702, 600), (738, 650), (732, 714), (588, 720), (562, 652), (552, 560), (552, 455), (556, 400)]
+# 腕の内側の境界は、右腕の肌（またはその輪郭線）の最も内側の画素を行ごとに検出して決める（手で座標を置かない）
+skin = (wa[..., 0] > 190) & (wa[..., 1] > 140) & (wa[..., 2] > 110) & (wa[..., 0] - wa[..., 2] > 25)
+inner = []
+for y in range(400, 700):
+    xs = np.where(skin[y, 500:720])[0]
+    if len(xs):
+        inner.append((int(xs.min()) + 500 - 6, y))       # 輪郭線の分 6px 外側
+# 袖の高さ（y 300〜400）は内側をブラウスの脇 x=536 まで含める（鏡像で左の胴との隙間を埋める）。襟の高さ（y<300）は 558
+poly = [(558, 262), (640, 262), (652, 360), (640, 470), (702, 600), (738, 650), (732, 714), (588, 720)] + inner[::-1] + [(536, 400), (536, 300), (558, 296)]
 m = Image.new("L", (W, H), 0); ImageDraw.Draw(m).polygon(poly, fill=255)
 alpha = Image.fromarray((((np.array(m) > 0) & nonwhite) * 255).astype("uint8"))
 arm = Image.new("RGBA", (W, H), (0, 0, 0, 0)); arm.paste(white, (0, 0), alpha)
 arm_m = arm.transpose(Image.FLIP_LEFT_RIGHT); shift = int(round(2 * axis - W))
 base = white.copy(); d = ImageDraw.Draw(base)
-d.polygon([(150, 190), (292, 190), (292, 470), (250, 500), (165, 500), (145, 330)], fill=(255, 255, 255))  # 上げた前腕・手・袖を消す
+# 上げた前腕・手・袖を消す。襟の先端（y<300）は避け、袖の高さでは胴の縁 x=316 まで
+d.polygon([(150, 190), (296, 190), (296, 300), (316, 300), (316, 470), (250, 500), (165, 500), (145, 330)], fill=(255, 255, 255))
 base.paste(arm_m, (shift, 0), arm_m)
 ba = np.array(base)
 def inpaint_dark(img, x0, x1, y0, y1, thr=150, dil=3, rad=3):
