@@ -5,7 +5,8 @@ ARG MUSUBI_COMMIT=e0cbd8f3dfe38365b10f8bc790b980f8894e8ba1
 WORKDIR /app
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends git && rm -rf /var/lib/apt/lists/* \
  && git clone -q https://github.com/kohya-ss/musubi-tuner.git && cd musubi-tuner && git checkout -q $MUSUBI_COMMIT \
- && pip install --no-cache-dir -e . && pip install --no-cache-dir runpod
-ENV KREA2_ROOT=/runpod-volume/krea2 PYTHONUNBUFFERED=1
+ # ベース同梱の torch を流用しつつ、musubi の依存は venv 側に入れる（システム側を上書きしようとして失敗するのを避ける）
+ && python -m venv --system-site-packages /opt/venv && /opt/venv/bin/pip install --no-cache-dir -e . runpod
+ENV KREA2_ROOT=/runpod-volume/krea2 PYTHONUNBUFFERED=1 PATH=/opt/venv/bin:$PATH
 COPY handler.py /app/handler.py
-CMD ["python", "-u", "/app/handler.py"]
+CMD ["/opt/venv/bin/python", "-u", "/app/handler.py"]

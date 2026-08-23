@@ -11,3 +11,15 @@ services:
       - TZ=Asia/Tokyo
     volumes:
       - ./data:/data
+  # RunPod Serverless 中継（編集ジョブ）。.env に RUNPOD_API_KEY / RUNPOD_ENDPOINT_ID を入れると動き出す
+  runpod-worker:
+    build: .
+    container_name: krea2-runpod-worker
+    restart: unless-stopped
+    command: ["python", "-u", "runpod_worker.py"]
+    env_file: .env
+    environment:
+      - TZ=Asia/Tokyo
+      - GALLERY_URL=http://gallery:8020
+    depends_on:
+      - gallery

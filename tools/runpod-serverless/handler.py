@@ -40,6 +40,8 @@ sys.argv = ["handler",
             "--image_size", "1024", "1024", "--infer_steps", "25", "--guidance_scale", "4.0",
             "--prompt", "warmup", "--negative_prompt", NEG_DEFAULT, "--save_path", TMP]
 ARGS = q.parse_args()
+if ARGS.device is None:  # CLI では main() が補う値
+    ARGS.device = "cuda" if torch.cuda.is_available() else "cpu"
 GEN = q.get_generation_settings(ARGS)
 DEVICE = GEN.device
 # テキストエンコーダ・VL processor（CPU に読み込まれるので GPU へ）
@@ -94,8 +96,8 @@ def handler(job: dict) -> dict:
             _, latent = q.generate(args, GEN, DIT_SHARED,
                                    precomputed_text_data={"context": context, "context_null": context_null,
                                                           "control": (control_latents, control_nps)})
-            pixels = q.decode_latent(VAE, latent, DEVICE)  # (1,3,H,W) float32 in [-1,1]
-        arr = ((pixels[0].permute(1, 2, 0).clamp(-1, 1) + 1) * 127.5).round().to(torch.uint8).numpy()
+            pixels = q.decode_latent(VAE, latent, DEVICE)  # (1,3,H,W) float32 in [0,1]（save_images_grid と同じ扱い）
+        arr = (pixels[0].permute(1, 2, 0).clamp(0, 1) * 255).round().to(torch.uint8).numpy()
         buf = io.BytesIO()
         Image.fromarray(arr).save(buf, format="PNG")
         return {"image": base64.b64encode(buf.getvalue()).decode(), "seed": args.seed,

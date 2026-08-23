@@ -16,7 +16,8 @@
 - GET  /api/lineage/{path}  画像の系譜: 使った LoRA → 学習 run → 素材画像
 ジョブ（iPhone からの指示 → WSL2 ワーカーが実行）:
 - GET  /api/jobs            一覧（新しい順）。GET /api/jobs/{id}?tail=200 で詳細+ログ末尾
-- POST /api/jobs            投入 JSON: {"type": "gen|train|compare", "params": {...}, "note": "..."}
+- POST /api/jobs            投入 JSON: {"type": "gen|train|compare|edit", "params": {...}, "note": "..."}
+                            edit は RunPod Serverless（runpod_worker.py が中継）。params: prompt, control[先頭=元画像, 以降=参照], seed, width, height, steps, guidance, folder
 - POST /api/jobs/{id}/cancel
 - GET  /api/jobs/next?worker=   ワーカー用（Bearer）: 次の queued を running にして返す
 - POST /api/jobs/{id}/log   ワーカー用（Bearer）: {"lines": [...], "progress": {...}}
@@ -577,7 +578,16 @@ JOBS = DATA / "jobs.json"
 JOBLOGS = DATA / "jobs"
 WORKER = DATA / "worker.json"
 JOBLOGS.mkdir(parents=True, exist_ok=True)
-JOB_TYPES = {"gen", "train", "compare"}
+JOB_TYPES = {"gen", "train", "compare", "edit"}
+# edit は RunPod 中継ワーカー（runpod_worker.py）、それ以外は WSL2 ワーカーが実行する
+
+
+def _worker_kind(worker: str | None) -> str:
+    return "runpod" if (worker or "").startswith("runpod") else "wsl2"
+
+
+def _job_kind(t: str) -> str:
+    return "runpod" if t == "edit" else "wsl2"
 
 
 def _load_jobs() -> list[dict]:
@@ -626,10 +636,11 @@ def api_jobs_next(worker: str = "wsl2", authorization: str | None = Header(defau
     _check_token(authorization)
     with _lock:
         jobs = _load_jobs()
-        if any(j["status"] == "running" for j in jobs):
+        kind = _worker_kind(worker)
+        if any(j["status"] == "running" and _worker_kind(j.get("worker")) == kind for j in jobs):
             return {"job": None, "reason": "another job is running"}
         for j in jobs:
-            if j["status"] == "queued":
+            if j["status"] == "queued" and _job_kind(j["type"]) == kind:
                 j.update({"status": "running", "started_at": _now(), "worker": worker, "progress": {}})
                 _save_jobs(jobs)
                 return {"job": j}
@@ -656,6 +667,14 @@ def api_job_create(request: Request, body: dict = Body(...)):
         raise HTTPException(400, "run name required ([A-Za-z0-9_.-])")
     if t == "compare" and not (params.get("run") and (params.get("prompt") or "").strip()):
         raise HTTPException(400, "run and prompt required")
+    if t == "edit":
+        ctrl = [str(c).strip("/") for c in (params.get("control") or []) if str(c).strip()]
+        if not (params.get("prompt") or "").strip() or not ctrl:
+            raise HTTPException(400, "prompt and control image required")
+        for c in ctrl:
+            if not (IMAGES / c).is_file():
+                raise HTTPException(400, f"image not found: {c}")
+        params["control"] = ctrl
     with _lock:
         jobs = _load_jobs()
         jid = time.strftime("%Y%m%d-%H%M%S") + f"-{len(jobs) + 1:04d}"
