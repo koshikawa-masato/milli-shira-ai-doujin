@@ -1199,7 +1199,7 @@ async function loadLineage(it) {
   box.querySelectorAll("a[data-p]").forEach(a => a.onclick = () => openPath(a.dataset.p));
   $("#lbNotes").innerHTML = L.notes.length ? L.notes.map(n => `<div class="lnote">${esc(n.text)}<small>${esc(n.ts.replace("T", " "))}</small></div>`).join("") : `<div class="muted">なし</div>`;
 }
-function close() { $("#lb").classList.remove("open"); state.idx = -1; if (state.view === "graph") loadGraph(); }
+function close() { $("#lb").classList.remove("open"); state.idx = -1; if (pendingReload) { pendingReload = false; load(); } else if (state.view === "graph") loadGraph(); }
 $("#lbHandle").onclick = () => $("#lbAside").classList.toggle("collapsed");
 $("#lbName").onclick = () => { if (MOBILE()) $("#lbAside").classList.toggle("collapsed"); };
 (() => { // スワイプで前後
@@ -1254,7 +1254,24 @@ document.addEventListener("keydown", (e) => {
 
 (() => { const h = location.hash; if (h.startsWith("#graph:")) { state.gMode = "folder"; state.gFolder = decodeURIComponent(h.slice(7)); state.folder = state.gFolder; } else if (h.startsWith("#focus:")) { state.gMode = "focus"; state.gFocus = decodeURIComponent(h.slice(7)); state.gHighlight = "img:" + state.gFocus; } })();
 setView(location.hash === "#hist" ? "hist" : location.hash === "#grid" ? "grid" : location.hash === "#ops" ? "ops" : "graph");
-setInterval(() => { if (state.idx < 0 && state.view !== "ops") load(); }, 20000);
+/* 自動更新: /api/version（履歴・★の更新印）を 10 秒ごとに見て、変わっていたら表示状態を保ったまま再読み込み */
+let lastVersion = null, pendingReload = false;
+async function checkVersion(force) {
+  try {
+    const j = await (await fetch("/api/version", { cache: "no-store" })).json();
+    if (lastVersion === null && !force) { lastVersion = j.v; return; }
+    if (j.v === lastVersion && !force) return;
+    lastVersion = j.v;
+    if (state.idx >= 0) { pendingReload = true; return; }   // 画像を開いている間は待つ
+    const m = document.querySelector("main"); const sl = m ? m.scrollLeft : 0, st = m ? m.scrollTop : 0;
+    await load();
+    if (m) { m.scrollLeft = sl; m.scrollTop = st; }
+    if (!force) toast("新しい更新を読み込みました");
+  } catch (e) { /* オフライン時は次回 */ }
+}
+setInterval(() => checkVersion(false), 10000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVersion(true); });
+window.addEventListener("focus", () => checkVersion(false));
 setInterval(() => { if (state.view === "ops") loadOps(); }, 4000);
 </script>
 </body>

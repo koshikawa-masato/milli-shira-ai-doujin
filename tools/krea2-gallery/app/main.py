@@ -775,6 +775,18 @@ def api_health():
     return {"ok": True}
 
 
+@app.get("/api/version")
+def api_version():
+    """画面の自動更新用。履歴（追記専用）と★の更新印。変わっていたら画面が再読み込みする"""
+    def st(p: Path) -> str:
+        try:
+            x = p.stat()
+            return f"{int(x.st_mtime)}:{x.st_size}"
+        except OSError:
+            return "0"
+    return {"v": st(HISTORY) + "|" + st(STARS)}
+
+
 @app.get("/api/me")
 def api_me(request: Request):
     return {"user": _who(request.headers)}
