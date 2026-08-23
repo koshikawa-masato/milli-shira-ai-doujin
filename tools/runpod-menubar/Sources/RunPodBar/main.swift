@@ -171,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var runningJob: [String: Any]? { jobs.first(where: { ($0["status"] as? String) == "running" }) }
     var queuedCount: Int { jobs.filter { ($0["status"] as? String) == "queued" }.count }
 
-    // 起動中（待機）= 緑、ジョブ実行中 = RunPod 紫 #5D29F0
+    // 起動中（待機）= RunPod 紫 #5D29F0、ジョブ実行中 = 緑
     static let runpodPurple = NSColor(srgbRed: 0x5D / 255.0, green: 0x29 / 255.0, blue: 0xF0 / 255.0, alpha: 1)
     var isBusy: Bool {
         if let rj = runningJob, (rj["worker"] as? String ?? "").hasPrefix("runpod") { return true }
@@ -181,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func color(for status: String?) -> NSColor {
         switch status {
-        case "RUNNING": return isBusy ? AppDelegate.runpodPurple : .systemGreen
+        case "RUNNING": return isBusy ? .systemGreen : AppDelegate.runpodPurple
         case "STARTING", "PROVISIONING": return .systemOrange
         case "ERROR": return .systemRed
         case nil: return .tertiaryLabelColor
