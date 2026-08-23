@@ -93,7 +93,10 @@ def edit_one(job: dict, out: str, size: list, steps: int, guidance: float) -> st
 def process(spec_path: str) -> None:
     jid = os.path.basename(spec_path)[:-5]
     log_path, state_path = f"{QUEUE}/{jid}.log", f"{QUEUE}/{jid}.state"
-    spec = json.load(open(spec_path, encoding="utf-8"))
+    try:
+        spec = json.load(open(spec_path, encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return  # 書き込み途中（scp 中）なら次の周回で拾う
     os.rename(spec_path, spec_path + ".processing")
     real_err = sys.stderr
     saved = []
@@ -123,8 +126,15 @@ def process(spec_path: str) -> None:
 
 
 while True:
-    specs = sorted(f for f in glob.glob(f"{QUEUE}/*.json") if not f.endswith(".processing"))
+    # 1 秒以上前に書かれた、中身のあるファイルだけ拾う（scp 書き込み中のものを避ける）
+    now = time.time()
+    specs = sorted(f for f in glob.glob(f"{QUEUE}/*.json")
+                   if os.path.getsize(f) > 0 and now - os.path.getmtime(f) > 1.0)
     if specs:
-        process(specs[0])
+        try:
+            process(specs[0])
+        except Exception:  # サーバ自体は落とさない
+            traceback.print_exc()
+            time.sleep(2)
         continue
     time.sleep(2)

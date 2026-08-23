@@ -219,7 +219,8 @@ def run_edit_on_pod(pod: Pod, job: dict) -> None:
         spec_local = os.path.join(td, "spec.json")
         with open(spec_local, "w", encoding="utf-8") as fh:
             json.dump(spec, fh, ensure_ascii=False)
-        pod.scp(spec_local, f"{queue}/{jid}.json")
+        pod.scp(spec_local, f"{queue}/{jid}.json.tmp")
+        pod.ssh(f"mv {queue}/{jid}.json.tmp {queue}/{jid}.json")  # 書き込み途中をサーバに拾わせない（原子的に置く）
     job_log(jid, [f"queued on pod: {len(control)} control images, {spec['size'][1]}x{spec['size'][0]}"], {"pct": 3})
     t0 = time.time()
     last_line, last_pct = "", 3.0
