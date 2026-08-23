@@ -17,6 +17,8 @@ services:
     container_name: krea2-runpod-worker
     restart: unless-stopped
     command: ["python", "-u", "runpod_worker.py"]
+    healthcheck:
+      disable: true   # Dockerfile の HEALTHCHECK は Web 用
     env_file: .env
     environment:
       - TZ=Asia/Tokyo
