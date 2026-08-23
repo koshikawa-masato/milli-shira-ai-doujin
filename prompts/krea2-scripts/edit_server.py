@@ -64,6 +64,7 @@ def edit_one(job: dict, out: str, size: list, steps: int, guidance: float) -> st
         "control_image_path": job["control"], "image_size_height": int(size[0]), "image_size_width": int(size[1]),
         # official_resize=False なら参照画像を公式サイズ（約1MP）へ縮小せず、出力サイズに合わせる（描き足しで顔の画素を保つ用）
         "resize_control_to_official_size": bool(job.get("official_resize", True)),
+        "mask_path": job.get("mask") or None,   # 白=生成する領域、黒=元画像を保つ（インペイント／描き足し）
     })
     VAE.to(DEVICE)  # decode_latent が VAE を CPU に戻すので、毎回 GPU へ
     with torch.no_grad():

@@ -89,6 +89,7 @@ def handler(job: dict) -> dict:
             "control_image_path": paths,
             "image_size_width": w, "image_size_height": h,
         })
+        VAE.to(DEVICE)  # decode_latent が VAE を CPU に戻すので、毎回 GPU へ
         with torch.no_grad():
             control_latents, control_nps = q.prepare_image_inputs(args, DEVICE, VAE)
             TE["conds_cache"].clear()

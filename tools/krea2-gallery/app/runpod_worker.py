@@ -212,7 +212,14 @@ def run_edit_on_pod(pod: Pod, job: dict) -> None:
                 fh.write(fetch_image(c))
             pod.scp(local, f"{remote_dir}/ctrl_{i}.png")
             ctrl_remote.append(f"{remote_dir}/ctrl_{i}.png")
-        spec = {"jobs": [{"prompt": p["prompt"], "control": ctrl_remote, "seed": int(p.get("seed") or 0),
+        mask_remote = None
+        if p.get("mask"):
+            local = os.path.join(td, "mask.png")
+            with open(local, "wb") as fh:
+                fh.write(fetch_image(str(p["mask"])))
+            pod.scp(local, f"{remote_dir}/mask.png")
+            mask_remote = f"{remote_dir}/mask.png"
+        spec = {"jobs": [{"prompt": p["prompt"], "control": ctrl_remote, "seed": int(p.get("seed") or 0), "mask": mask_remote,
                           "note": job.get("note") or "", "negative": p.get("negative") or None,
                           "official_resize": not bool(p.get("no_official_resize"))}],
                 "out": f"{POD_ROOT}/output/{folder}", "size": [int(p.get("height") or 1024), int(p.get("width") or 1024)],
