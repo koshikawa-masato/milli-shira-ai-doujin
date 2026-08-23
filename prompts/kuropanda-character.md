@@ -28,7 +28,7 @@
 
 ## Oracle（絶対の基準＝正面、2026-08-22）
 
-- **2026-08-23 追記（要件定義）**: Oracle は 2 段構え。**顔の Oracle** = 下記の正面バストアップ（`compare/kuropanda_v2/20260822-162704-170_0.png`）、**高一の全身（顔・等身）Oracle** = `oracle/20260822-211146-418_1.png`（細身・制服全身・縦長）。高 3 の体型 Oracle は横 `turnaround/20260823-022026-397_0__000.png`・後ろ `turnaround/20260823-022025-980_0__000.png`（いずれも**服は Oracle 対象外**、写真が正）。詳細は [制服姿の要件定義](kuropanda-uniform-requirements.md)
+- **2026-08-23 追記（要件定義）**: **Oracle は `oracle/20260822-211146-418_1.png`（細身・制服全身・縦長）のみ**。顔・等身ともこれが基準（天の声の確定）。下記の正面バストアップ（パーカー）は 08-22 時点の基準で、**08-23 以降は使わない**（Claude が「2 段構え」として残したのは誤りで撤回）。高 3 の体型 Oracle は横 `turnaround/20260823-022026-397_0__000.png`・後ろ `turnaround/20260823-022025-980_0__000.png`（服は対象外、写真が正）。詳細は [制服姿の要件定義](kuropanda-uniform-requirements.md)
 - **`compare/kuropanda_v2/20260822-162704-170_0.png`**（v2 LoRA **step 800**、`krpn, waving one hand, big happy open-mouth smile, upper body, classroom background`、**seed 0**）
 - 天の声「正面を Oracle にして。横向きを基準にしているからダメ」— それまで基準にしていたサークルカットの子は**斜め向き**で、顔合わせのズレの原因だった
 - 以後、顔の判定・素材の選別・着せ替えはすべてこの Oracle と比べる。派生元（PARENT）もこれにする
