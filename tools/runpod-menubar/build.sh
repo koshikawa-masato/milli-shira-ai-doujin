@@ -6,6 +6,7 @@ swift build -c release 2>&1 | tail -2
 APP=build/RunPodBar.app
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS"
 cp .build/release/RunPodBar "$APP/Contents/MacOS/RunPodBar"
+mkdir -p "$APP/Contents/Resources" && cp Resources/runpod_18.png Resources/runpod_18@2x.png "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

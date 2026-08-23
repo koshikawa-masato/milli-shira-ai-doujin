@@ -57,8 +57,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var timer: Timer?
     var sessionStart: [String: Date] = [:]   // 自分が見ていた RUNNING の開始（目安の課金表示用）
 
+    lazy var baseIcon: NSImage? = {
+        // RunPod のロゴ（Resources/runpod_18.png, @2x）。無ければ ● にフォールバック
+        let dir = Bundle.main.resourceURL ?? Bundle.main.bundleURL
+        for name in ["runpod_18.png"] {
+            if let img = NSImage(contentsOf: dir.appendingPathComponent(name)) {
+                if let hi = NSImage(contentsOf: dir.appendingPathComponent("runpod_18@2x.png")), let rep = hi.representations.first {
+                    img.addRepresentation(rep)
+                }
+                img.size = NSSize(width: 18, height: 18)
+                return img
+            }
+        }
+        return nil
+    }()
+
+    func tinted(_ color: NSColor) -> NSImage? {
+        guard let base = baseIcon else { return nil }
+        let img = NSImage(size: base.size, flipped: false) { rect in
+            base.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        img.isTemplate = false
+        return img
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.imagePosition = .imageLeading
         item.menu = NSMenu()
         render()
         refresh()
@@ -149,7 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "STARTING", "PROVISIONING": return .systemOrange
         case "ERROR": return .systemRed
         case nil: return .tertiaryLabelColor
-        default: return .systemGray
+        default: return .systemGray   // EXITED（停止中）は灰色
         }
     }
 
@@ -179,7 +207,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = item.button else { return }
         let p = primary
         let status = podError != nil ? nil : p?.status
-        let title = NSMutableAttributedString(string: "●", attributes: [.foregroundColor: color(for: status), .font: NSFont.systemFont(ofSize: 13)])
+        let c = color(for: status)
+        let title = NSMutableAttributedString()
+        if let icon = tinted(c) { button.image = icon } else {
+            title.append(NSAttributedString(string: "●", attributes: [.foregroundColor: c, .font: NSFont.systemFont(ofSize: 13)]))
+        }
         var suffix = ""
         if let b = balance { suffix += String(format: " $%.2f", b) }
         if p?.status == "RUNNING" { suffix += String(format: " (-%.2f/h)", spendPerHr ?? p!.cost) }
