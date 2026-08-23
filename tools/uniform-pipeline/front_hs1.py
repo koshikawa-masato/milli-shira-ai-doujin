@@ -121,14 +121,18 @@ v5cut = remove(v5, session=new_session("isnet-anime"), alpha_matting=False).conv
 bb = hair_bbox(base, (0.5, 0.06))
 va = np.array(v5); vblack = (va.max(axis=2) < 48); vblack[560:, :] = False                # 髪は y<560（襟の線や影を除外）
 ys, xs = np.where(vblack[:, 250:800]); hb = (xs.min() + 250, ys.min(), xs.max() + 250, ys.max())
-CHIN = 650                                                                                 # V5 の顎の下端（1024² 基準）
+NECK = 610                                                                                 # V5 の首の付け根（1024² 基準）。ここから下（襟・手）は貼らない
 sc = (bb[2] - bb[0]) / (hb[2] - hb[0])
-x0, x1, y0, y1 = max(0, hb[0] - 12), min(v5.width, hb[2] + 12), max(0, hb[1] - 8), CHIN
-head = v5cut.crop((x0, y0, x1, y1)); head_s = head.resize((int(head.width * sc), int(head.height * sc)), Image.LANCZOS)
+x0, x1, y0, y1 = max(0, hb[0] - 6), min(v5.width, hb[2] + 6), max(0, hb[1] - 6), NECK
+head = v5cut.crop((x0, y0, x1, y1))
+# 頭の形の楕円で切る（左の手・右の襟を除外）。下端は首で水平に切る
+em = Image.new("L", head.size, 0); ImageDraw.Draw(em).ellipse((0, 0, head.width, int(head.height * 1.12)), fill=255)
+ha = np.array(head); ha[..., 3] = np.minimum(ha[..., 3], np.array(em)); head = Image.fromarray(ha)
+head_s = head.resize((int(head.width * sc), int(head.height * sc)), Image.LANCZOS)
 px, py = int(bb[0] - (hb[0] - x0) * sc), int(bb[1] - (hb[1] - y0) * sc)
 faceA = base.copy()
-# 貼る前に B の頭（髪〜顎）の範囲を白で消す（B の髪がはみ出さないように）
-ImageDraw.Draw(faceA).rectangle((px - 4, 0, px + head_s.width + 4, py + head_s.height - 6), fill=(255, 255, 255))
+# B の頭（髪〜首）を白で消してから貼る。B の首から下（襟・胴）はそのまま
+ImageDraw.Draw(faceA).ellipse((px - 6, py - 6, px + head_s.width + 6, py + int(head_s.height * 1.12) + 6), fill=(255, 255, 255))
 faceA.paste(head_s, (px, py), head_s)
 faceA.save(f"{OUT}/front_hs1_faceA.png")
 print("axis", round(axis, 1), "head scale", round(sc, 3), "paste", px, py, head_s.size)
